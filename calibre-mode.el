@@ -115,9 +115,10 @@
                     ((string= "O" opr)
                      (find-file-other-frame found-file-path))
                     ((string= "e" opr)
-                     (shell-command (format "xournal '%s' &" (if (file-exists-p xoj-file-path)
-                                                                 xoj-file-path
-                                                               found-file-path))))
+                     (start-process "xournal-process" "*Messages*" "xournal" (if (file-exists-p xoj-file-path)
+                                                                                 xoj-file-path
+                                                                               found-file-path))
+                     )
                     ((string= "c" opr)
                      (insert (first (split-string author-sort ",")) (substring book-pubdate 0 4) "id" calibre-id))
                     ((string= "p" opr)
