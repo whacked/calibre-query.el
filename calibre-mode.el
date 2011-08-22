@@ -67,23 +67,26 @@
          (book-format  (downcase (nth 4 spl-query-result)))
          (book-pubdate (nth 5 spl-query-result))
          (found-file-path (concat calibre-root-dir "/" book-dir "/" book-name "." book-format))
+         (xoj-file-path   (concat calibre-root-dir "/" book-dir "/" book-name ".xoj"))
          )
     (if (file-exists-p found-file-path)
         (let ((opr (char-to-string (read-char
-                                    (concat "found " (second spl-query-result) ". [o]pen open[O]ther [c]itekey [p]ath")))))
+                                    (concat "found " book-name ". [o]pen open[O]ther open[e]xt [c]itekey [p]ath [q]uit")))))
           (cond ((string= "o" opr)
                  (find-file-other-window found-file-path))
                 ((string= "O" opr)
                  (find-file-other-frame found-file-path))
+                ((string= "e" opr)
+                 (shell-command (format "xournal '%s' &" (if (file-exists-p xoj-file-path)
+                                                           xoj-file-path
+                                                           found-file-path))))
                 ((string= "c" opr)
                  (insert (first (split-string author-sort ",")) (substring book-pubdate 0 4) "id" calibre-id))
                 ((string= "p" opr)
                  (insert found-file-path "\n"))
+                (t
+                 (message "quit"))
                 )
           )
       (message "didn't find that file"))
     ))
-
-
-
-
