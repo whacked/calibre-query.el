@@ -6,6 +6,18 @@
 
 (defvar calibre-root-dir (expand-file-name "~/Calibre Library"))
 (defvar calibre-db (concat calibre-root-dir "/metadata.db"))
+;; CREATE TABLE pdftext ( filepath CHAR(255) PRIMARY KEY, content TEXT );
+;; (defvar calibre-text-cache-db (expand-file-name "~/Documents/pdftextcache.db"))
+;; (defun calibre-get-cached-pdf-text (pdf-filepath)
+;;   (let ((found-text (shell-command-to-string
+;;                      (format "%s -separator '\t' '%s' 'SELECT content FROM pdftext WHERE filepath = '%s'" sql-sqlite-program calibre-text-cache-db pdf-filepath))))
+;;     (if (< 0 (length found-text))
+;;         found-text
+;;       (let ((text-extract (shell-command-to-string
+;;                            (format "pdftotext '%s' -" pdf-filepath))))
+;;         (message "supposed to insert this!")
+;;         ))))
+
 
 ;; (shell-command-to-string
 ;;  (format "%s -separator '\t' '%s' '%s'" sql-sqlite-program calibre-db ".schema books"))
@@ -55,6 +67,16 @@
             (concat "SELECT b.path FROM books AS b "
                     (calibre-read-query-filter-command)))))
 
+(defun calibre-get-cached-pdf-text (pdf-filepath)
+  (let ((found-text (shell-command-to-string
+                     (format "%s -separator '\t' '%s' 'SELECT content FROM pdftext WHERE filepath = '%s'" sql-sqlite-program calibre-text-cache-db pdf-filepath))))
+    (if (< 0 (length found-text))
+        found-text
+      (let ((text-extract (shell-command-to-string
+                           (format "pdftotext '%s' -" pdf-filepath))))
+        (message "supposed to insert this!")
+        ))))
+
 (defun calibre-find ()
   (interactive)
   (let* ((sql-query (calibre-build-default-query (calibre-read-query-filter-command) 1))
@@ -71,7 +93,7 @@
          )
     (if (file-exists-p found-file-path)
         (let ((opr (char-to-string (read-char
-                                    (concat "found " book-name ". [o]pen open[O]ther open[e]xt [c]itekey [p]ath [q]uit")))))
+                                    (concat "found " book-name ". [o]pen open[O]ther open[e]xt [c]itekey [p]ath [t]ext [q]uit")))))
           (cond ((string= "o" opr)
                  (find-file-other-window found-file-path))
                 ((string= "O" opr)
@@ -84,6 +106,15 @@
                  (insert (first (split-string author-sort ",")) (substring book-pubdate 0 4) "id" calibre-id))
                 ((string= "p" opr)
                  (insert found-file-path "\n"))
+                ((string= "t" opr)
+                 (let* ((pdf-filepath "/home/natto/Desktop/fulltext.pdf")
+                        (calibre-id 1200)
+                        (pdftotext-out-buffer (get-buffer-create (format "pdftotext-extract-%s" calibre-id))))
+                   (set-buffer pdftotext-out-buffer)
+                   (insert (shell-command-to-string (concat "pdftotext '" pdf-filepath "' -")))
+                   (switch-to-buffer-other-window pdftotext-out-buffer)
+                   (beginning-of-buffer)
+                   ))
                 (t
                  (message "quit"))
                 )
