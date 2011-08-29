@@ -120,7 +120,7 @@
                                                                                found-file-path))
                      )
                     ((string= "c" opr)
-                     (insert (first (split-string author-sort ",")) (substring book-pubdate 0 4) "id" calibre-id))
+                     (insert (replace-in-string (first (split-string author-sort "[&,?]")) " " "") (substring book-pubdate 0 4) "id" calibre-id))
                     ((string= "p" opr)
                      (insert found-file-path "\n"))
                     ((string= "t" opr)
@@ -136,5 +136,4 @@
               )
           (message "didn't find that file"))))
     ))
-
 
