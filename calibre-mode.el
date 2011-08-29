@@ -6,6 +6,7 @@
 
 (defvar calibre-root-dir (expand-file-name "~/Calibre Library"))
 (defvar calibre-db (concat calibre-root-dir "/metadata.db"))
+(defvar calibre-text-cache-dir (expand-file-name "~/note/org/calibre"))
 ;; CREATE TABLE pdftext ( filepath CHAR(255) PRIMARY KEY, content TEXT );
 ;; (defvar calibre-text-cache-db (expand-file-name "~/Documents/pdftextcache.db"))
 ;; (defun calibre-get-cached-pdf-text (pdf-filepath)
@@ -88,6 +89,9 @@
            (message "no candidate id found here")))))
    (message "nothing at point!")))
 
+(defun calibre-make-text-cache-path-from-citekey (citekey)
+  (concat calibre-text-cache-dir "/" citekey ".org"))
+
 (defun calibre-find (&optional custom-query)
   (interactive)
   (let* ((sql-query (if custom-query
@@ -106,6 +110,7 @@
              (book-pubdate (nth 5 spl-query-result))
              (found-file-path (concat calibre-root-dir "/" book-dir "/" book-name "." book-format))
              (xoj-file-path   (concat calibre-root-dir "/" book-dir "/" book-name ".xoj"))
+             (citekey (concat (replace-in-string (first (split-string author-sort "[&,?]")) " " "") (substring book-pubdate 0 4) "id" calibre-id))
              )
         (if (file-exists-p found-file-path)
             (let ((opr (char-to-string (read-char
@@ -120,16 +125,22 @@
                                                                                found-file-path))
                      )
                     ((string= "c" opr)
-                     (insert (replace-in-string (first (split-string author-sort "[&,?]")) " " "") (substring book-pubdate 0 4) "id" calibre-id))
+                     (insert citekey))
                     ((string= "p" opr)
                      (insert found-file-path "\n"))
                     ((string= "t" opr)
-                     (let* ((pdftotext-out-buffer (get-buffer-create (format "pdftotext-extract-%s" calibre-id))))
-                       (set-buffer pdftotext-out-buffer)
-                       (insert (shell-command-to-string (concat "pdftotext '" found-file-path "' -")))
-                       (switch-to-buffer-other-window pdftotext-out-buffer)
-                       (beginning-of-buffer)
-                       ))
+                     (let ((cached-text-path (calibre-make-text-cache-path-from-citekey citekey)))
+                       (if (file-exists-p cached-text-path)
+                           (progn
+                             (find-file-other-window cached-text-path)
+                             (org-open-link-from-string "[[note]]")
+                             (forward-line))
+                         (let* ((pdftotext-out-buffer (get-buffer-create (format "pdftotext-extract-%s" calibre-id))))
+                           (set-buffer pdftotext-out-buffer)
+                           (insert (shell-command-to-string (concat "pdftotext '" found-file-path "' -")))
+                           (switch-to-buffer-other-window pdftotext-out-buffer)
+                           (beginning-of-buffer)
+                           ))))
                     (t
                      (message "quit"))
                     )
