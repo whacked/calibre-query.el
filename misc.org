@@ -1,0 +1,68 @@
+
+
+#+begin_src python :results output :eval never
+  from __future__ import (print_function)
+  import os, sys
+  CALIBRE_SRC_DIR = os.path.expanduser("~/dev/calibre/calibre-src")
+  sys.path.append(os.path.join(CALIBRE_SRC_DIR, "src"))
+  sys.resources_location = os.environ.get('CALIBRE_RESOURCES_PATH', os.path.join(CALIBRE_SRC_DIR, "resources"))
+  sys.extensions_location = os.environ.get('CALIBRE_EXTENSIONS_PATH', os.path.join(CALIBRE_SRC_DIR, "src/calibre/plugins"))
+  sys.executables_location = os.environ.get('CALIBRE_EXECUTABLES_PATH', '/usr/bin')
+  
+  import string
+  import shelve
+  import subprocess
+  from calibre import as_unicode
+  from calibre.ebooks.metadata import check_isbn
+  from calibre.ebooks.metadata.sources.base import Source
+  from calibre.utils.icu import lower
+  from calibre.utils.cleantext import clean_ascii_chars
+  from calibre.utils.localization import get_udc
+  from calibre.customize.ui import *
+  from calibre.ebooks.metadata.book.base import Metadata
+  
+  from calibre.library import cli
+  
+  class Dummy: library_path=os.path.expanduser("~/Calibre Library/")
+  
+  cdb = cli.get_db(os.path.join(Dummy.library_path, "metadata.db"), Dummy())
+  
+  def make_citekey(dcbk):
+      return "%s%sid%s" % (dcbk["author_sort"].split("&")[0].split(",")[0].replace(" ", "").replace("?", ""), dcbk["pubdate"].year, dcbk["id"])
+  
+  #D = shelve.open("calibre.shelve")
+  #D.close()
+  
+  tpl_header = string.Template("""#+TITLE: $TITLE
+    $AUTHORLIST
+  
+  * $CITEKEY$TAGLIST
+  
+  * note
+  
+  """)
+  
+  tpl_text = string.Template("""-----
+  
+  * text
+  
+  $TEXT""")
+  
+  OUTPUTDIR = os.path.expanduser("~/note/org/calibre")
+  for dcbk in cdb.get_data_as_dict():
+      citekey = make_citekey(dcbk)
+      out_filepath = os.path.join(OUTPUTDIR, citekey+".org")
+      articletext = ""
+      if "fmt_pdf" in dcbk:
+          p = subprocess.Popen(["pdftotext", dcbk["fmt_pdf"], "-"], stdout=subprocess.PIPE)
+          articletext = p.stdout.read()
+      if not os.path.exists(out_filepath):
+          with open(out_filepath, "a") as ofile:
+              ofile.write(tpl_header.substitute(TITLE = dcbk["title"],
+                                                AUTHORLIST = " ; ".join(dcbk["authors"]),
+                                                CITEKEY = citekey,
+                                                TAGLIST = dcbk["tags"] and "        :%s:" % ":".join(dcbk["tags"]) or ""))
+              ofile.write(tpl_text.substitute(TEXT = articletext))
+          #print("wrote: %s" % ofile.name)  
+#+end_src
+
