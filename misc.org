@@ -1,6 +1,6 @@
 
 
-#+begin_src python :results output :eval never
+#+begin_src python :results output
   from __future__ import (print_function)
   import os, sys
   CALIBRE_SRC_DIR = os.path.expanduser("~/dev/calibre/calibre-src")
@@ -36,6 +36,8 @@
   tpl_header = string.Template("""#+TITLE: $TITLE
     $AUTHORLIST
   
+  $FILEPATH
+  
   * $CITEKEY$TAGLIST
   
   * note
@@ -48,7 +50,10 @@
   
   $TEXT""")
   
+  OVERWRITE = False
+  WRITEHEADER = True
   OUTPUTDIR = os.path.expanduser("~/note/org/calibre")
+  output_count = 0
   for dcbk in cdb.get_data_as_dict():
       citekey = make_citekey(dcbk)
       out_filepath = os.path.join(OUTPUTDIR, citekey+".org")
@@ -56,13 +61,23 @@
       if "fmt_pdf" in dcbk:
           p = subprocess.Popen(["pdftotext", dcbk["fmt_pdf"], "-"], stdout=subprocess.PIPE)
           articletext = p.stdout.read()
+      writeoption = None
       if not os.path.exists(out_filepath):
-          with open(out_filepath, "a") as ofile:
-              ofile.write(tpl_header.substitute(TITLE = dcbk["title"],
-                                                AUTHORLIST = " ; ".join(dcbk["authors"]),
-                                                CITEKEY = citekey,
-                                                TAGLIST = dcbk["tags"] and "        :%s:" % ":".join(dcbk["tags"]) or ""))
+          writeoption = "a"
+      if OVERWRITE:
+          writeoption = "w"
+      if writeoption:
+          with open(out_filepath, writeoption) as ofile:
+              if WRITEHEADER:
+                  ofile.write(tpl_header.substitute(TITLE = dcbk["title"],
+                                                    FILEPATH = "\n".join(map(lambda fpath: "- %s: [[file:%s]]" % (os.path.splitext(fpath)[-1][1:].upper(), fpath), dcbk["formats"])),
+                                                    AUTHORLIST = " ; ".join(dcbk["authors"]),
+                                                    CITEKEY = citekey,
+                                                    TAGLIST = dcbk["tags"] and "        :%s:" % ":".join(dcbk["tags"]) or ""))
               ofile.write(tpl_text.substitute(TEXT = articletext))
+              output_count += 1
           #print("wrote: %s" % ofile.name)  
+  print("%s outputted" % output_count)
+  
 #+end_src
 
