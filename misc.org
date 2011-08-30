@@ -33,51 +33,84 @@
   #D = shelve.open("calibre.shelve")
   #D.close()
   
-  tpl_header = string.Template("""#+TITLE: $TITLE
+  tpl_text = string.Template("""#+TITLE: $TITLE
     $AUTHORLIST
   
   $FILEPATH
   
-  * $CITEKEY$TAGLIST
+  * $CITEKEY
+    $TAGLIST
+    $KEYWORDLIST
+    $PROJECTLIST
   
-  * note
-  
+  * [[file:note.org][note file]]
+
+  * text
+
+  $TEXT
   """)
   
-  tpl_text = string.Template("""-----
+  tpl_note = string.Template("""#+TITLE: $TITLE
   
-  * text
+    ($CITEKEY) [[file:text.org][article text file]]
+
+  * note
   
-  $TEXT""")
+    
+  """)
   
   OVERWRITE = False
-  WRITEHEADER = True
   OUTPUTDIR = os.path.expanduser("~/note/org/calibre")
   output_count = 0
-  for dcbk in cdb.get_data_as_dict():
-      citekey = make_citekey(dcbk)
-      out_filepath = os.path.join(OUTPUTDIR, citekey+".org")
-      articletext = ""
-      if "fmt_pdf" in dcbk:
-          p = subprocess.Popen(["pdftotext", dcbk["fmt_pdf"], "-"], stdout=subprocess.PIPE)
-          articletext = p.stdout.read()
-      writeoption = None
-      if not os.path.exists(out_filepath):
-          writeoption = "a"
-      if OVERWRITE:
-          writeoption = "w"
-      if writeoption:
-          with open(out_filepath, writeoption) as ofile:
-              if WRITEHEADER:
-                  ofile.write(tpl_header.substitute(TITLE = dcbk["title"],
-                                                    FILEPATH = "\n".join(map(lambda fpath: "- %s: [[file:%s]]" % (os.path.splitext(fpath)[-1][1:].upper(), fpath), dcbk["formats"])),
-                                                    AUTHORLIST = " ; ".join(dcbk["authors"]),
-                                                    CITEKEY = citekey,
-                                                    TAGLIST = dcbk["tags"] and "        :%s:" % ":".join(dcbk["tags"]) or ""))
-              ofile.write(tpl_text.substitute(TEXT = articletext))
+  lsdcbk = cdb.get_data_as_dict()
+  if True:
+      for dcbk in lsdcbk:
+          citekey = make_citekey(dcbk)
+          out_book_dir = os.path.join(OUTPUTDIR, citekey)
+          if not os.path.exists(out_book_dir):
+              os.mkdir(out_book_dir)
+          out_text_filepath = os.path.join(out_book_dir, "text.org")
+          out_note_filepath = os.path.join(out_book_dir, "note.org")
+          articletext = ""
+          if "fmt_pdf" in dcbk:
+              p = subprocess.Popen(["pdftotext", dcbk["fmt_pdf"], "-"], stdout=subprocess.PIPE)
+              articletext = p.stdout.read()
+          writeoption = None
+          if not os.path.exists(out_text_filepath) or OVERWRITE:
+              with open(out_text_filepath, "w") as ofile:
+                  dproj = dcbk[cdb.custom_column_label_map["project"]['num']]
+                  dkeyword = dcbk[cdb.custom_column_label_map["keywords"]['num']]
+                  ls_project = dproj and dproj.split("|") or []
+                  ls_keyword = dkeyword and dkeyword.split("|") or []
+                  ofile.write(tpl_text.substitute(TITLE = dcbk["title"],
+                                                  FILEPATH = "\n".join(map(lambda fpath: "- %s: [[file:%s]]" % (os.path.splitext(fpath)[-1][1:].upper(), fpath), dcbk["formats"])),
+                                                  AUTHORLIST = " ; ".join(dcbk["authors"]),
+                                                  PROJECTLIST = ", ".join(ls_project),
+                                                  KEYWORDLIST = ", ".join(ls_keyword),
+                                                  CITEKEY = citekey,
+                                                  TEXT = articletext,
+                                                  TAGLIST = dcbk["tags"] and "        :%s:" % ":".join(dcbk["tags"]) or ""))
               output_count += 1
-          #print("wrote: %s" % ofile.name)  
-  print("%s outputted" % output_count)
+              print("wrote: %s" % ofile.name)  
+          if not os.path.exists(out_note_filepath):
+              with open(out_note_filepath, "w") as ofile:
+                  ofile.write(tpl_note.substitute(TITLE = dcbk["title"],
+                                                  CITEKEY = citekey))
+              print("wrote: %s" % ofile.name)  
+
+      print("%s outputted" % output_count)
+  if not True:
+      def getlist(dc, key):
+          val = dc[cdb.custom_column_label_map[key]['num']]
+          if val: return val.lower().split("|")
+          else: return []
+
+      for dcbk in lsdcbk:
+          keywordlist = getlist(dcbk, "keywords")
+          projectlist = getlist(dcbk, "project")
+          if "st" in keywordlist or "st" in projectlist:
+              print make_citekey(dcbk)
+          
   
 #+end_src
 

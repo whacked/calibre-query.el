@@ -90,7 +90,9 @@
    (message "nothing at point!")))
 
 (defun calibre-make-text-cache-path-from-citekey (citekey)
-  (concat calibre-text-cache-dir "/" citekey ".org"))
+  (concat calibre-text-cache-dir "/" citekey "/text.org"))
+(defun calibre-make-note-cache-path-from-citekey (citekey)
+  (concat calibre-text-cache-dir "/" citekey "/note.org"))
 
 (defun calibre-find (&optional custom-query)
   (interactive)
@@ -129,12 +131,16 @@
                     ((string= "p" opr)
                      (insert found-file-path "\n"))
                     ((string= "t" opr)
-                     (let ((cached-text-path (calibre-make-text-cache-path-from-citekey citekey)))
+                     (let ((cached-text-path (calibre-make-text-cache-path-from-citekey citekey))
+                           (cached-note-path (calibre-make-note-cache-path-from-citekey citekey)))
                        (if (file-exists-p cached-text-path)
                            (progn
                              (find-file-other-window cached-text-path)
-                             (org-open-link-from-string "[[note]]")
-                             (forward-line))
+                             (when (file-exists-p cached-note-path)
+                               (split-window-horizontally)
+                               (find-file-other-window cached-note-path)
+                               (org-open-link-from-string "[[note]]")
+                               (forward-line 2)))
                          (let* ((pdftotext-out-buffer (get-buffer-create (format "pdftotext-extract-%s" calibre-id))))
                            (set-buffer pdftotext-out-buffer)
                            (insert (shell-command-to-string (concat "pdftotext '" found-file-path "' -")))
@@ -148,3 +154,4 @@
           (message "didn't find that file"))))
     ))
 
+(global-set-key "\C-cK" 'calibre-open-citekey)
