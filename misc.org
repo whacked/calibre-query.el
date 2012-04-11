@@ -1,6 +1,6 @@
 
 
-#+begin_src python :results output
+#+begin_src python :results output :tangle calibre-recache-text.py
   from __future__ import (print_function)
   import os, sys
   CALIBRE_SRC_DIR = os.path.expanduser("~/dev/calibre/calibre-src")
@@ -109,7 +109,7 @@
           keywordlist = getlist(dcbk, "keywords")
           projectlist = getlist(dcbk, "project")
           if "st" in keywordlist or "st" in projectlist:
-              print make_citekey(dcbk)
+              print(make_citekey(dcbk))
           
   
 #+end_src
