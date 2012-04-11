@@ -57,6 +57,7 @@ tpl_note = string.Template("""#+TITLE: $TITLE
   
 """)
 
+OUTPUT_NOTE_FILE = False # create a 'note.org' file in the cache text directory; disabled because I realized I don't use it at all
 OVERWRITE = False
 OUTPUTDIR = os.path.expanduser("~/note/org/calibre")
 output_count = 0
@@ -90,11 +91,12 @@ if True:
                                                 TAGLIST = dcbk["tags"] and "        :%s:" % ":".join(dcbk["tags"]) or ""))
             output_count += 1
             print("wrote: %s" % ofile.name)  
-        if not os.path.exists(out_note_filepath):
-            with open(out_note_filepath, "w") as ofile:
-                ofile.write(tpl_note.substitute(TITLE = dcbk["title"],
-                                                CITEKEY = citekey))
-            print("wrote: %s" % ofile.name)  
+        if OUTPUT_NOTE_FILE:
+            if not os.path.exists(out_note_filepath):
+                with open(out_note_filepath, "w") as ofile:
+                    ofile.write(tpl_note.substitute(TITLE = dcbk["title"],
+                                                    CITEKEY = citekey))
+                print("wrote: %s" % ofile.name)  
 
     print("%s outputted" % output_count)
 if not True:
