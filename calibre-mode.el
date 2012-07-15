@@ -6,7 +6,7 @@
 
 (defvar calibre-root-dir (expand-file-name "~/Calibre Library"))
 (defvar calibre-db (concat calibre-root-dir "/metadata.db"))
-(defvar calibre-text-cache-dir (expand-file-name "~/note/org/calibre"))
+(defvar calibre-text-cache-dir (expand-file-name "~/note/org/.calibre"))
 ;; CREATE TABLE pdftext ( filepath CHAR(255) PRIMARY KEY, content TEXT );
 ;; (defvar calibre-text-cache-db (expand-file-name "~/Documents/pdftextcache.db"))
 ;; (defun calibre-get-cached-pdf-text (pdf-filepath)
@@ -89,6 +89,16 @@
            (message "no candidate id found here")))))
    (message "nothing at point!")))
 
+(defun calibre-grab-extract (beg end)
+  (interactive (list (point) (mark)))
+  (unless (and beg end)
+    (error "no region selected"))
+  (let* ((citekey (second (split-string (buffer-name) "-")))
+         (str-extract (buffer-substring beg end)))
+    (set-buffer (find-buffer-visiting (calibre-make-note-cache-path-from-citekey citekey)))
+    (end-of-buffer)
+    (insert "\n- " str-extract "\n")))
+
 (defun calibre-make-text-cache-path-from-citekey (citekey)
   (concat calibre-text-cache-dir "/" citekey "/text.org"))
 (defun calibre-make-note-cache-path-from-citekey (citekey)
@@ -122,7 +132,7 @@
                     ((string= "O" opr)
                      (find-file-other-frame found-file-path))
                     ((string= "e" opr)
-                     (start-process "xournal-process" "*Messages*" "xournal" (if (file-exists-p xoj-file-path)
+                     (start-process "xournal-process" "*Messages*" "/usr/local/bin/xournal" (if (file-exists-p xoj-file-path)
                                                                                  xoj-file-path
                                                                                found-file-path))
                      )
@@ -132,15 +142,21 @@
                      (insert found-file-path "\n"))
                     ((string= "t" opr)
                      (let ((cached-text-path (calibre-make-text-cache-path-from-citekey citekey))
-                           (cached-note-path (calibre-make-note-cache-path-from-citekey citekey)))
+                           ;;(cached-note-path (calibre-make-note-cache-path-from-citekey citekey))
+                           )
                        (if (file-exists-p cached-text-path)
                            (progn
                              (find-file-other-window cached-text-path)
-                             (when (file-exists-p cached-note-path)
+                             (rename-buffer (concat "note-" citekey))
+                             (when nil
+                              (when (file-exists-p cached-note-path)
                                (split-window-horizontally)
                                (find-file-other-window cached-note-path)
+                               (rename-buffer (concat "note-" citekey))
                                (org-open-link-from-string "[[note]]")
                                (forward-line 2)))
+                             )
+                         
                          (let* ((pdftotext-out-buffer (get-buffer-create (format "pdftotext-extract-%s" calibre-id))))
                            (set-buffer pdftotext-out-buffer)
                            (insert (shell-command-to-string (concat "pdftotext '" found-file-path "' -")))
@@ -151,7 +167,9 @@
                      (message "quit"))
                     )
               )
-          (message "didn't find that file"))))
-    ))
+          (message "didn't find that file"))))))
 
 (global-set-key "\C-cK" 'calibre-open-citekey)
+(global-set-key "\C-cE" 'calibre-grab-extract)
+(global-set-key "\C-cF" 'calibre-find)
+
