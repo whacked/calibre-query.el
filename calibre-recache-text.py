@@ -59,7 +59,7 @@ tpl_note = string.Template("""#+TITLE: $TITLE
 
 OUTPUT_NOTE_FILE = False # create a 'note.org' file in the cache text directory; disabled because I realized I don't use it at all
 OVERWRITE = False
-OUTPUTDIR = os.path.expanduser("~/note/org/calibre")
+OUTPUTDIR = os.path.expanduser("~/note/org/.calibre")
 output_count = 0
 lsdcbk = cdb.get_data_as_dict()
 if True:
