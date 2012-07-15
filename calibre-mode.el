@@ -62,11 +62,14 @@
       (format "WHERE lower(b.author_sort) LIKE '\\''%%%s%%'\\'' OR lower(b.title) LIKE '\\''%%%s%%'\\''"
               (downcase search-string) (downcase search-string)))))
 
+(defun quote-% (str)
+  (replace-regexp-in-string "%" "%%" str))
+
 (defun calibre-list ()
   (interactive)
-  (message (calibre-query
+  (message (quote-% (calibre-query
             (concat "SELECT b.path FROM books AS b "
-                    (calibre-read-query-filter-command)))))
+                    (calibre-read-query-filter-command))))))
 
 (defun calibre-get-cached-pdf-text (pdf-filepath)
   (let ((found-text (shell-command-to-string
