@@ -106,7 +106,7 @@
          )
     (if (= 0 (length query-result))
         (message "nothing found.")
-      (let* ((spl-query-result (split-string (sql-chomp query-result) "\t"))
+      (let* ((spl-query-result (split-string query-result "\t"))
              (calibre-id   (nth 0 spl-query-result))
              (author-sort  (nth 1 spl-query-result))
              (book-dir     (nth 2 spl-query-result))
@@ -115,7 +115,7 @@
              (book-pubdate (nth 5 spl-query-result))
              (found-file-path (concat calibre-root-dir "/" book-dir "/" book-name "." book-format))
              (xoj-file-path   (concat calibre-root-dir "/" book-dir "/" book-name ".xoj"))
-             (citekey (concat (replace-in-string (first (split-string author-sort "[&,?]")) " " "") (substring book-pubdate 0 4) "id" calibre-id))
+             (citekey (concat (replace-regexp-in-string (first (split-string author-sort "[&,?]")) " " "") (substring book-pubdate 0 4) "id" calibre-id))
              )
         (if (file-exists-p found-file-path)
             (let ((opr (char-to-string (read-char
@@ -158,3 +158,5 @@
     ))
 
 (global-set-key "\C-cK" 'calibre-open-citekey)
+
+(provide 'calibre-mode)
