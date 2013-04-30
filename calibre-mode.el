@@ -6,7 +6,7 @@
 
 (defvar calibre-root-dir (expand-file-name "~/Calibre Library"))
 (defvar calibre-db (concat calibre-root-dir "/metadata.db"))
-(defvar calibre-text-cache-dir (expand-file-name "~/note/org/calibre"))
+(defvar calibre-text-cache-dir (expand-file-name "~/note/org/.calibre"))
 ;; CREATE TABLE pdftext ( filepath CHAR(255) PRIMARY KEY, content TEXT );
 ;; (defvar calibre-text-cache-db (expand-file-name "~/Documents/pdftextcache.db"))
 ;; (defun calibre-get-cached-pdf-text (pdf-filepath)
