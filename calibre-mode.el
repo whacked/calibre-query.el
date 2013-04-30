@@ -97,6 +97,11 @@
 (defun calibre-make-note-cache-path-from-citekey (citekey)
   (concat calibre-text-cache-dir "/" citekey "/note.org"))
 
+;; TODO apple
+;; write general query result destructurer and replace below
+;; (let* ((spl-query-result (split-string query-result "\t"))...
+;; with it
+
 (defun calibre-find (&optional custom-query)
   (interactive)
   (let* ((sql-query (if custom-query
@@ -106,6 +111,7 @@
          )
     (if (= 0 (length query-result))
         (message "nothing found.")
+      ;; FIXME apple
       (let* ((spl-query-result (split-string query-result "\t"))
              (calibre-id   (nth 0 spl-query-result))
              (author-sort  (nth 1 spl-query-result))
@@ -116,10 +122,11 @@
              (found-file-path (concat calibre-root-dir "/" book-dir "/" book-name "." book-format))
              (xoj-file-path   (concat calibre-root-dir "/" book-dir "/" book-name ".xoj"))
              (citekey (concat (replace-regexp-in-string (first (split-string author-sort "[&,?]")) " " "") (substring book-pubdate 0 4) "id" calibre-id))
+             (description-text ". [o]pen open[O]ther open[e]xt [c]itekey [i]nsertId [p]ath [t]ext [q]uit")
              )
         (if (file-exists-p found-file-path)
             (let ((opr (char-to-string (read-char
-                                        (concat "found " book-name ". [o]pen open[O]ther open[e]xt [c]itekey [p]ath [t]ext [q]uit")))))
+                                        (concat "found " book-name description-text)))))
               (cond ((string= "o" opr)
                      (find-file-other-window found-file-path))
                     ((string= "O" opr)
@@ -133,6 +140,17 @@
                      (insert citekey))
                     ((string= "p" opr)
                      (insert found-file-path "\n"))
+                    ;; query for identifiers
+                    ;; FIXME apple
+                    ((string= "i" opr)
+                     (insert
+                      (progn
+                        ;; stupidly just insert the plain text result
+                        (calibre-query (concat "SELECT "
+                                               "idf.type, idf.val "
+                                               "FROM identifiers AS idf "
+                                               (format "WHERE book = %s"
+                                                       calibre-id))))))
                     ((string= "t" opr)
                      (let ((cached-text-path (calibre-make-text-cache-path-from-citekey citekey))
                            (cached-note-path (calibre-make-note-cache-path-from-citekey citekey)))
