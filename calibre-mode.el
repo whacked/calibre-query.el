@@ -29,6 +29,20 @@
   (shell-command-to-string
    (format "%s -separator '\t' '%s' '%s'" sql-sqlite-program calibre-db sql-query)))
 
+(defun calibre-query-to-alist (query-result)
+  "builds alist out of a full calibre-query query record result"
+  (if query-result
+      (let ((spl-query-result (split-string query-result "\t")))
+        `((:id                     ,(nth 0 spl-query-result))
+          (:author-sort            ,(nth 1 spl-query-result))
+          (:book-dir               ,(nth 2 spl-query-result))
+          (:book-name              ,(nth 3 spl-query-result))
+          (:book-format  ,(downcase (or (nth 4 spl-query-result) "")))
+          (:book-pubdate           ,(nth 5 spl-query-result))
+          (:file-path    ,(concat (file-name-as-directory calibre-root-dir)
+                                  (file-name-as-directory (nth 2 spl-query-result))
+                                  (nth 3 spl-query-result) "." (or (downcase (nth 4 spl-query-result)) "")))))))
+
 (defun calibre-build-default-query (whereclause &optional limit)
   (concat "SELECT "
           "b.id, b.author_sort, b.path, d.name, d.format, b.pubdate"
@@ -97,10 +111,6 @@
 (defun calibre-make-note-cache-path-from-citekey (citekey)
   (concat calibre-text-cache-dir "/" citekey "/note.org"))
 
-;; TODO apple
-;; write general query result destructurer and replace below
-;; (let* ((spl-query-result (split-string query-result "\t"))...
-;; with it
 
 (defun calibre-find (&optional custom-query)
   (interactive)
