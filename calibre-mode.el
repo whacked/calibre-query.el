@@ -1,9 +1,3 @@
-
-(defun test ()
-  (interactive)
-  (message (char-to-string (read-char "answer? ")))
- )
-
 (defvar calibre-root-dir (expand-file-name "~/Calibre Library"))
 (defvar calibre-db (concat calibre-root-dir "/metadata.db"))
 (defvar calibre-text-cache-dir (expand-file-name "~/note/org/.calibre"))
