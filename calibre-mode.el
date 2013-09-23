@@ -31,15 +31,16 @@
           (:author-sort            ,(nth 1 spl-query-result))
           (:book-dir               ,(nth 2 spl-query-result))
           (:book-name              ,(nth 3 spl-query-result))
-          (:book-format  ,(downcase (or (nth 4 spl-query-result) "")))
+          (:book-format  ,(downcase (nth 4 spl-query-result)))
           (:book-pubdate           ,(nth 5 spl-query-result))
+          (:book-title             ,(nth 6 spl-query-result))
           (:file-path    ,(concat (file-name-as-directory calibre-root-dir)
                                   (file-name-as-directory (nth 2 spl-query-result))
-                                  (nth 3 spl-query-result) "." (or (downcase (nth 4 spl-query-result)) "")))))))
+                                  (nth 3 spl-query-result) "." (downcase (nth 4 spl-query-result))))))))
 
 (defun calibre-build-default-query (whereclause &optional limit)
   (concat "SELECT "
-          "b.id, b.author_sort, b.path, d.name, d.format, b.pubdate"
+          "b.id, b.author_sort, b.path, d.name, d.format, b.pubdate, b.title"
           " FROM data AS d "
           "LEFT OUTER JOIN books AS b ON d.book = b.id "
           whereclause
@@ -157,6 +158,8 @@
                                        (insert (shell-command-to-string (concat "pdftotext '" (getattr res :file-path) "' -")))
                                        (switch-to-buffer-other-window pdftotext-out-buffer)
                                        (beginning-of-buffer))))))
+                              ("T" "insert title"
+                               (lambda (res) (insert (getattr res :book-title))))
                               ("q" "(or anything else) to cancel"
                                (lambda (res) (message "cancelled")))))
 
