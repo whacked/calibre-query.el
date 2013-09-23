@@ -111,79 +111,84 @@
 (defun calibre-make-note-cache-path-from-citekey (citekey)
   (concat calibre-text-cache-dir "/" citekey "/note.org"))
 
+(defun getattr (my-alist key)
+  (cadr (assoc key my-alist)))
+
+(defun calibre-make-citekey (calibre-res-alist)
+  "return some kind of a unique citation key for BibTeX use"
+  (concat
+   (replace-regexp-in-string (first (split-string (getattr calibre-res-alist :author-sort) "[&,?]")) " " "")
+   (substring (getattr calibre-res-alist :book-pubdate) 0 4) "id" (getattr calibre-res-alist :id)))
+
+;; define the result handlers here in the form of (hotkey description handler-function)
+;; where handler-function takes 1 alist argument containing the result record
+(setq calibre-handler-alist '(("o" "open"
+                               (lambda (res) (find-file-other-window (getattr res :file-path))))
+                              ("O" "open other frame"
+                               (lambda (res) (find-file-other-frame (getattr res :file-path))))
+                              ("x" "open with xournal"
+                               (lambda (res) (start-process "xournal-process" "*Messages*" "xournal"
+                                                            (let ((xoj-file-path (concat calibre-root-dir "/" (getattr res :book-dir) "/" (getattr res :book-name) ".xoj")))
+                                                              (if (file-exists-p xoj-file-path)
+                                                                  xoj-file-path
+                                                                (getattr res :file-path))))))
+                              ("c" "insert citekey"
+                               (lambda (res)
+                                 (insert (calibre-make-citekey res))))
+                              ("i" "insert values in the book's `Ids` field (ISBN, DOI...)"
+                               (lambda (res)
+                                 ;; stupidly just insert the plain text result
+                                 (insert
+                                  (calibre-query (concat "SELECT "
+                                                         "idf.type, idf.val "
+                                                         "FROM identifiers AS idf "
+                                                         (format "WHERE book = %s" (getattr res :id)))))))
+                              ("p" "insert file path"
+                               (lambda (res) (insert (getattr res :file-path))))
+                              ("t" "open as plaintext in new buffer (via pdftotext)"
+                               (lambda (res)
+                                 (let* ((citekey (calibre-make-citekey res))
+                                        (cached-text-path (calibre-make-text-cache-path-from-citekey citekey))
+                                        (cached-note-path (calibre-make-note-cache-path-from-citekey citekey)))
+                                   (if (file-exists-p cached-text-path)
+                                       (progn
+                                         (find-file-other-window cached-text-path)
+                                         (when (file-exists-p cached-note-path)
+                                           (split-window-horizontally)
+                                           (find-file-other-window cached-note-path)
+                                           (org-open-link-from-string "[[note]]")
+                                           (forward-line 2)))
+                                     (let* ((pdftotext-out-buffer (get-buffer-create (format "pdftotext-extract-%s" (getattr res :id)))))
+                                       (set-buffer pdftotext-out-buffer)
+                                       (insert (shell-command-to-string (concat "pdftotext '" (getattr res :file-path) "' -")))
+                                       (switch-to-buffer-other-window pdftotext-out-buffer)
+                                       (beginning-of-buffer))))))
+                              ("q" "(or anything else) to cancel"
+                               (lambda (res) (message "cancelled")))))
 
 (defun calibre-find (&optional custom-query)
   (interactive)
   (let* ((sql-query (if custom-query
                         custom-query
                       (calibre-build-default-query (calibre-read-query-filter-command) 1)))
-         (query-result (calibre-query sql-query))
-         )
+         (query-result (calibre-query sql-query)))
     (if (= 0 (length query-result))
         (message "nothing found.")
-      ;; FIXME apple
-      (let* ((spl-query-result (split-string query-result "\t"))
-             (calibre-id   (nth 0 spl-query-result))
-             (author-sort  (nth 1 spl-query-result))
-             (book-dir     (nth 2 spl-query-result))
-             (book-name    (nth 3 spl-query-result))
-             (book-format  (downcase (nth 4 spl-query-result)))
-             (book-pubdate (nth 5 spl-query-result))
-             (found-file-path (concat calibre-root-dir "/" book-dir "/" book-name "." book-format))
-             (xoj-file-path   (concat calibre-root-dir "/" book-dir "/" book-name ".xoj"))
-             (citekey (concat (replace-regexp-in-string (first (split-string author-sort "[&,?]")) " " "") (substring book-pubdate 0 4) "id" calibre-id))
-             (description-text ". [o]pen open[O]ther open[e]xt [c]itekey [i]nsertId [p]ath [t]ext [q]uit")
-             )
-        (if (file-exists-p found-file-path)
+      (let ((res (calibre-query-to-alist query-result)))
+        (if (file-exists-p (getattr res :file-path))
             (let ((opr (char-to-string (read-char
-                                        (concat "found " book-name description-text)))))
-              (cond ((string= "o" opr)
-                     (find-file-other-window found-file-path))
-                    ((string= "O" opr)
-                     (find-file-other-frame found-file-path))
-                    ((string= "e" opr)
-                     (start-process "xournal-process" "*Messages*" "xournal" (if (file-exists-p xoj-file-path)
-                                                                                 xoj-file-path
-                                                                               found-file-path))
-                     )
-                    ((string= "c" opr)
-                     (insert citekey))
-                    ((string= "p" opr)
-                     (insert found-file-path "\n"))
-                    ;; query for identifiers
-                    ;; FIXME apple
-                    ((string= "i" opr)
-                     (insert
-                      (progn
-                        ;; stupidly just insert the plain text result
-                        (calibre-query (concat "SELECT "
-                                               "idf.type, idf.val "
-                                               "FROM identifiers AS idf "
-                                               (format "WHERE book = %s"
-                                                       calibre-id))))))
-                    ((string= "t" opr)
-                     (let ((cached-text-path (calibre-make-text-cache-path-from-citekey citekey))
-                           (cached-note-path (calibre-make-note-cache-path-from-citekey citekey)))
-                       (if (file-exists-p cached-text-path)
-                           (progn
-                             (find-file-other-window cached-text-path)
-                             (when (file-exists-p cached-note-path)
-                               (split-window-horizontally)
-                               (find-file-other-window cached-note-path)
-                               (org-open-link-from-string "[[note]]")
-                               (forward-line 2)))
-                         (let* ((pdftotext-out-buffer (get-buffer-create (format "pdftotext-extract-%s" calibre-id))))
-                           (set-buffer pdftotext-out-buffer)
-                           (insert (shell-command-to-string (concat "pdftotext '" found-file-path "' -")))
-                           (switch-to-buffer-other-window pdftotext-out-buffer)
-                           (beginning-of-buffer)
-                           ))))
-                    (t
-                     (message "quit"))
-                    )
-              )
-          (message "didn't find that file"))))
-    ))
+                                        ;; render menu text here
+                                        (concat "[" (getattr res :book-name) "] found ... what do?\n"
+                                                (mapconcat '(lambda (handler-list)
+                                                              (let ((hotkey      (elt handler-list 0))
+                                                                    (description (elt handler-list 1))
+                                                                    (handler-fn  (elt handler-list 2)))
+                                                                (format " %s :   %s" hotkey description))
+                                                              ) calibre-handler-alist "\n"))))))
+              (funcall
+               (elt (if (null (assoc opr calibre-handler-alist)) (assoc "q" calibre-handler-alist)
+                      (assoc opr calibre-handler-alist)) 2) res))
+          (message "didn't find that file"))))))
 
 (global-set-key "\C-cK" 'calibre-open-citekey)
 
