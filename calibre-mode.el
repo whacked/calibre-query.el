@@ -65,7 +65,7 @@
 (defun calibre-query-to-alist (query-result)
   "builds alist out of a full calibre-query query record result"
   (if query-result
-      (let ((spl-query-result (split-string query-result "\t")))
+      (let ((spl-query-result (split-string (calibre-chomp query-result) "\t")))
         `((:id                     ,(nth 0 spl-query-result))
           (:author-sort            ,(nth 1 spl-query-result))
           (:book-dir               ,(nth 2 spl-query-result))
@@ -169,6 +169,9 @@
                                                               (if (file-exists-p xoj-file-path)
                                                                   xoj-file-path
                                                                 (getattr res :file-path))))))
+                              ("s" "insert calibre search string"
+                               (lambda (res)
+                                 (insert (concat "title:\"" (getattr res :book-title) "\""))))
                               ("c" "insert citekey"
                                (lambda (res)
                                  (insert (calibre-make-citekey res))))
@@ -204,7 +207,7 @@
                                        (switch-to-buffer-other-window pdftotext-out-buffer)
                                        (beginning-of-buffer))))))
                               ("T" "insert title"
-                               (lambda (res) (insert (calibre-chomp (getattr res :book-title)))))
+                               (lambda (res) (insert (getattr res :book-title))))
                               ("q" "(or anything else) to cancel"
                                (lambda (res) (message "cancelled")))))
 
