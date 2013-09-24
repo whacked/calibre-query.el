@@ -95,9 +95,15 @@
 
 (defun calibre-read-query-filter-command ()
   (interactive)
-  (let* ((search-string (read-from-minibuffer "search string: "))
+  (let* ((default-string (if mark-active (calibre-chomp (buffer-substring (mark) (point)))))
+         ;; prompt &optional initial keymap read history default
+         (search-string (read-string (format "search string%s: "
+                                             (if default-string
+                                                 (concat " [" default-string "]")
+                                               "")) nil nil default-string))
          (spl-arg (split-string search-string ":")))
-    (if (< 1 (length spl-arg))
+    (if (and (< 1 (length spl-arg))
+             (= 1 (length (second spl-arg))))
         (let* ((command (downcase (first spl-arg)))
                (argstring (second spl-arg))
                (wherefield
