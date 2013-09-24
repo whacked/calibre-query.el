@@ -12,15 +12,15 @@
          ;; appears to be related to http://lists.gnu.org/archive/html/emacs-devel/2009-07/msg00279.html
          ;; you're better off replacing it with your exact program...
          ;; here we run xdg-mime to figure it out for *pdf* only. So this is not general!
-         ;; attempt for more linux compat, ref
-         ;; http://askubuntu.com/questions/159369/script-to-find-executable-based-on-extension-of-a-file
-         ;; here we try to find the location of the mimetype opener that xdg-mime refers to.
-         ;; it works for okular (Exec=okular %U %i -caption "%c"). NO IDEA if it works for others!
          (calibre-chomp
           (shell-command-to-string
            (concat
             "grep Exec "
             (first
+             ;; attempt for more linux compat, ref
+             ;; http://askubuntu.com/questions/159369/script-to-find-executable-based-on-extension-of-a-file
+             ;; here we try to find the location of the mimetype opener that xdg-mime refers to.
+             ;; it works for okular (Exec=okular %U %i -caption "%c"). NO IDEA if it works for others!
              (delq nil (let ((mime-appname (calibre-chomp (replace-regexp-in-string
                                                            "kde4-" "kde4/"
                                                            (shell-command-to-string "xdg-mime query default application/pdf")))))
