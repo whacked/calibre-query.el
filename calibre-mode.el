@@ -186,8 +186,6 @@
                                                           (format "WHERE book = %s" (getattr res :id))))))))
                               ("p" "insert file path"
                                (lambda (res) (insert (getattr res :file-path))))
-                              ("p" "insert file path"
-                               (lambda (res) (insert (getattr res :file-path))))
                               ("t" "open as plaintext in new buffer (via pdftotext)"
                                (lambda (res)
                                  (let* ((citekey (calibre-make-citekey res))
