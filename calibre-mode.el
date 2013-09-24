@@ -1,5 +1,9 @@
 (defvar calibre-root-dir (expand-file-name "~/Calibre Library"))
 (defvar calibre-db (concat calibre-root-dir "/metadata.db"))
+
+(defun calibre-chomp (s)
+  (replace-regexp-in-string "[\s\n]+$" "" s))
+
 (defvar calibre-text-cache-dir (expand-file-name "~/note/org/.calibre"))
 ;; CREATE TABLE pdftext ( filepath CHAR(255) PRIMARY KEY, content TEXT );
 ;; (defvar calibre-text-cache-db (expand-file-name "~/Documents/pdftextcache.db"))
@@ -134,10 +138,13 @@
                                (lambda (res)
                                  ;; stupidly just insert the plain text result
                                  (insert
-                                  (calibre-query (concat "SELECT "
-                                                         "idf.type, idf.val "
-                                                         "FROM identifiers AS idf "
-                                                         (format "WHERE book = %s" (getattr res :id)))))))
+                                  (calibre-chomp
+                                   (calibre-query (concat "SELECT "
+                                                          "idf.type, idf.val "
+                                                          "FROM identifiers AS idf "
+                                                          (format "WHERE book = %s" (getattr res :id))))))))
+                              ("p" "insert file path"
+                               (lambda (res) (insert (getattr res :file-path))))
                               ("p" "insert file path"
                                (lambda (res) (insert (getattr res :file-path))))
                               ("t" "open as plaintext in new buffer (via pdftotext)"
@@ -159,7 +166,7 @@
                                        (switch-to-buffer-other-window pdftotext-out-buffer)
                                        (beginning-of-buffer))))))
                               ("T" "insert title"
-                               (lambda (res) (insert (getattr res :book-title))))
+                               (lambda (res) (insert (calibre-chomp (getattr res :book-title)))))
                               ("q" "(or anything else) to cancel"
                                (lambda (res) (message "cancelled")))))
 
