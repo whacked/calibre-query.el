@@ -156,9 +156,14 @@
 
 (defun calibre-make-citekey (calibre-res-alist)
   "return some kind of a unique citation key for BibTeX use"
-  (concat
-   (replace-regexp-in-string (first (split-string (getattr calibre-res-alist :author-sort) "[&,?]")) " " "")
-   (substring (getattr calibre-res-alist :book-pubdate) 0 4) "id" (getattr calibre-res-alist :id)))
+  (let* ((spl (split-string (calibre-chomp (getattr calibre-res-alist :author-sort)) "&"))
+         (first-author-lastname (first (split-string (first spl) ",")))
+         (first-word-in-title (first (split-string (getattr calibre-res-alist :book-title) " "))))
+    (concat
+     (downcase (replace-regexp-in-string  "\\W" "" first-author-lastname))
+     (if (< 1 (length spl)) "etal" "")
+     (substring (getattr calibre-res-alist :book-pubdate) 0 4)
+     (downcase (replace-regexp-in-string  "\\W" "" first-word-in-title)))))
 
 ;; define the result handlers here in the form of (hotkey description handler-function)
 ;; where handler-function takes 1 alist argument containing the result record
@@ -201,7 +206,7 @@
                                                    (substring (getattr res :book-pubdate) 0 10)))
                                          ((string= "a" opr)
                                           (funcall usefunc
-                                                   (getattr res :author-sort)))
+                                                   (calibre-chomp (getattr res :author-sort))))
                                          (t (message "cancelled"))))
 
                                  ))
