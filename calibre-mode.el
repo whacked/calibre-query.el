@@ -145,6 +145,7 @@
               ;; capture first word in title       into group \3
               "\\(.+?\\)\\(?:etal\\)?\\([[:digit:]]\\\{4\\\}\\)\\(.*\\)"
               "WHERE lower(b.author_sort) LIKE '\\\\''%\\1%'\\\\'' AND lower(b.title) LIKE '\\\\''\\3%'\\\\''AND b.pubdate >= '\\\\''\\2-01-01'\\\\'' AND b.pubdate <= '\\\\''\\2-12-31'\\\\''" (word-at-point))))
+        (mark-word)
         (calibre-find (calibre-build-default-query where-string)))
     (message "nothing at point!")))
 
@@ -215,7 +216,7 @@
                               ("p" "insert file path"
                                (lambda (res) (funcall (if mark-active 'kill-new 'insert) (getattr res :file-path))))
                               ("t" "insert title"
-                               (lambda (res) (insert (getattr res :book-title))))
+                               (lambda (res) (funcall (if mark-active 'kill-new 'insert) (getattr res :book-title))))
                               ("X" "open as plaintext in new buffer (via pdftotext)"
                                (lambda (res)
                                  (let* ((citekey (calibre-make-citekey res))
