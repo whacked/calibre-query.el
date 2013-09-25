@@ -179,15 +179,32 @@
                                (lambda (res) (funcall (if mark-active 'kill-new 'insert) (concat "title:\"" (getattr res :book-title) "\""))))
                               ("c" "insert citekey"
                                (lambda (res) (funcall (if mark-active 'kill-new 'insert) (calibre-make-citekey res))))
-                              ("i" "insert values in the book's `Ids` field (ISBN, DOI...)"
+                              ("i" "get book information (SELECT IN NEXT MENU) and insert"
                                (lambda (res)
-                                 ;; stupidly just insert the plain text result
-                                 (insert
-                                  (calibre-chomp
-                                   (calibre-query (concat "SELECT "
-                                                          "idf.type, idf.val "
-                                                          "FROM identifiers AS idf "
-                                                          (format "WHERE book = %s" (getattr res :id))))))))
+                                 (let ((usefunc (if mark-active 'kill-new 'insert))
+                                       (opr (char-to-string (read-char
+                                                             ;; render menu text here
+                                                             (concat "What information do you want?\n"
+                                                                     "i : values in the book's `Ids` field (ISBN, DOI...)\n"
+                                                                     "d : pubdate\n"
+                                                                     "a : author list\n")))))
+                                   (cond ((string= "i" opr)
+                                          ;; stupidly just insert the plain text result
+                                          (funcall usefunc
+                                                   (calibre-chomp
+                                                    (calibre-query (concat "SELECT "
+                                                                           "idf.type, idf.val "
+                                                                           "FROM identifiers AS idf "
+                                                                           (format "WHERE book = %s" (getattr res :id)))))))
+                                         ((string= "d" opr)
+                                          (funcall usefunc
+                                                   (substring (getattr res :book-pubdate) 0 10)))
+                                         ((string= "a" opr)
+                                          (funcall usefunc
+                                                   (getattr res :author-sort)))
+                                         (t (message "cancelled"))))
+
+                                 ))
                               ("p" "insert file path"
                                (lambda (res) (funcall (if mark-active 'kill-new 'insert) (getattr res :file-path))))
                               ("t" "insert title"
