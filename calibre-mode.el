@@ -190,7 +190,9 @@
                                                           (format "WHERE book = %s" (getattr res :id))))))))
                               ("p" "insert file path"
                                (lambda (res) (funcall (if mark-active 'kill-new 'insert) (getattr res :file-path))))
-                              ("t" "open as plaintext in new buffer (via pdftotext)"
+                              ("t" "insert title"
+                               (lambda (res) (insert (getattr res :book-title))))
+                              ("X" "open as plaintext in new buffer (via pdftotext)"
                                (lambda (res)
                                  (let* ((citekey (calibre-make-citekey res))
                                         (cached-text-path (calibre-make-text-cache-path-from-citekey citekey))
@@ -208,8 +210,6 @@
                                        (insert (shell-command-to-string (concat "pdftotext '" (getattr res :file-path) "' -")))
                                        (switch-to-buffer-other-window pdftotext-out-buffer)
                                        (beginning-of-buffer))))))
-                              ("T" "insert title"
-                               (lambda (res) (insert (getattr res :book-title))))
                               ("q" "(or anything else) to cancel"
                                (lambda (res) (message "cancelled")))))
 
