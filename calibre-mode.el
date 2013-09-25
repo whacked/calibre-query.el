@@ -175,12 +175,10 @@
                                                               (if (file-exists-p xoj-file-path)
                                                                   xoj-file-path
                                                                 (getattr res :file-path))))))
-                              ("s" "insert calibre search string"
-                               (lambda (res)
-                                 (insert (concat "title:\"" (getattr res :book-title) "\""))))
-                              ("c" "insert citekey"
-                               (lambda (res)
-                                 (insert (calibre-make-citekey res))))
+                              ("s" "calibre search string: copy to clipboard (if mark active) or insert (if mark inactive)"
+                               (lambda (res) (funcall (if mark-active 'kill-new 'insert) (concat "title:\"" (getattr res :book-title) "\""))))
+                              ("c" "citekey: copy to clipboard (if mark active) or insert (if mark inactive)"
+                               (lambda (res) (funcall (if mark-active 'kill-new 'insert) (calibre-make-citekey res))))
                               ("i" "insert values in the book's `Ids` field (ISBN, DOI...)"
                                (lambda (res)
                                  ;; stupidly just insert the plain text result
@@ -190,8 +188,8 @@
                                                           "idf.type, idf.val "
                                                           "FROM identifiers AS idf "
                                                           (format "WHERE book = %s" (getattr res :id))))))))
-                              ("p" "insert file path"
-                               (lambda (res) (insert (getattr res :file-path))))
+                              ("p" "file path: copy to clipboard (if mark active) or insert (if mark inactive)"
+                               (lambda (res) (funcall (if mark-active 'kill-new 'insert) (getattr res :file-path))))
                               ("t" "open as plaintext in new buffer (via pdftotext)"
                                (lambda (res)
                                  (let* ((citekey (calibre-make-citekey res))
