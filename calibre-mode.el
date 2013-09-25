@@ -138,13 +138,15 @@
 (defun calibre-open-citekey ()
   (interactive)
   (if (word-at-point)
-   (let ((spl-key (split-string (word-at-point) "id")))
-     (when (< 1 (length spl-key))
-       (let* ((calibre-id (first (last spl-key))))
-         (if (< 0 (string-to-number calibre-id))
-           (calibre-find (calibre-build-default-query (format "WHERE b.id = %s" calibre-id)))
-           (message "no candidate id found here")))))
-   (message "nothing at point!")))
+      (let ((where-string
+             (replace-regexp-in-string
+              ;; capture all up to optional "etal" into group \1
+              ;; capture 4 digits of date          into group \2
+              ;; capture first word in title       into group \3
+              "\\(.+?\\)\\(?:etal\\)?\\([[:digit:]]\\\{4\\\}\\)\\(.+\\)"
+              "WHERE lower(b.author_sort) LIKE '\\\\''%\\1%'\\\\'' AND lower(b.title) LIKE '\\\\''\\3%'\\\\''AND b.pubdate >= '\\\\''\\2-01-01'\\\\'' AND b.pubdate <= '\\\\''\\2-12-31'\\\\''" (word-at-point))))
+        (calibre-find (calibre-build-default-query where-string)))
+    (message "nothing at point!")))
 
 (defun calibre-make-text-cache-path-from-citekey (citekey)
   (concat calibre-text-cache-dir "/" citekey "/text.org"))
