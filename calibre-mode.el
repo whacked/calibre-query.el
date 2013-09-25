@@ -175,9 +175,9 @@
                                                               (if (file-exists-p xoj-file-path)
                                                                   xoj-file-path
                                                                 (getattr res :file-path))))))
-                              ("s" "calibre search string: copy to clipboard (if mark active) or insert (if mark inactive)"
+                              ("s" "insert calibre search string"
                                (lambda (res) (funcall (if mark-active 'kill-new 'insert) (concat "title:\"" (getattr res :book-title) "\""))))
-                              ("c" "citekey: copy to clipboard (if mark active) or insert (if mark inactive)"
+                              ("c" "insert citekey"
                                (lambda (res) (funcall (if mark-active 'kill-new 'insert) (calibre-make-citekey res))))
                               ("i" "insert values in the book's `Ids` field (ISBN, DOI...)"
                                (lambda (res)
@@ -188,7 +188,7 @@
                                                           "idf.type, idf.val "
                                                           "FROM identifiers AS idf "
                                                           (format "WHERE book = %s" (getattr res :id))))))))
-                              ("p" "file path: copy to clipboard (if mark active) or insert (if mark inactive)"
+                              ("p" "insert file path"
                                (lambda (res) (funcall (if mark-active 'kill-new 'insert) (getattr res :file-path))))
                               ("t" "open as plaintext in new buffer (via pdftotext)"
                                (lambda (res)
@@ -230,7 +230,13 @@
                                                               (let ((hotkey      (elt handler-list 0))
                                                                     (description (elt handler-list 1))
                                                                     (handler-fn  (elt handler-list 2)))
-                                                                (format " %s :   %s" hotkey description))
+                                                                ;; ULGY BANDAIT HACK
+                                                                ;; replace "insert" with "copy to clipboard" if mark-active
+                                                                (format " %s :   %s"
+                                                                        hotkey
+                                                                        (if mark-active
+                                                                            (replace-regexp-in-string "insert \\(.*\\)" "copy \\1 to clipboard" description)
+                                                                          description)))
                                                               ) calibre-handler-alist "\n"))))))
               (funcall
                (elt (if (null (assoc opr calibre-handler-alist)) (assoc "q" calibre-handler-alist)
