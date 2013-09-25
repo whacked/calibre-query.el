@@ -103,7 +103,7 @@
                                                "")) nil nil default-string))
          (spl-arg (split-string search-string ":")))
     (if (and (< 1 (length spl-arg))
-             (= 1 (length (second spl-arg))))
+             (= 1 (length (first spl-arg))))
         (let* ((command (downcase (first spl-arg)))
                (argstring (second spl-arg))
                (wherefield
