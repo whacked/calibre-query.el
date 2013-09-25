@@ -163,7 +163,7 @@
      (downcase (replace-regexp-in-string  "\\W" "" first-author-lastname))
      (if (< 1 (length spl)) "etal" "")
      (substring (getattr calibre-res-alist :book-pubdate) 0 4)
-     (downcase (replace-regexp-in-string  "\\W" "" first-word-in-title)))))
+     (downcase (replace-regexp-in-string  "\\W.*" "" first-word-in-title)))))
 
 ;; define the result handlers here in the form of (hotkey description handler-function)
 ;; where handler-function takes 1 alist argument containing the result record
