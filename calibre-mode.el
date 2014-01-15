@@ -143,7 +143,7 @@
               ;; capture all up to optional "etal" into group \1
               ;; capture 4 digits of date          into group \2
               ;; capture first word in title       into group \3
-              "\\(.+?\\)\\(?:etal\\)?\\([[:digit:]]\\\{4\\\}\\)\\(.*\\)"
+              "\\b\\(.+?\\)\\(?:etal\\)?\\([[:digit:]]\\\{4\\\}\\)\\(.*\\)\\b"
               "WHERE lower(b.author_sort) LIKE '\\\\''%\\1%'\\\\'' AND lower(b.title) LIKE '\\\\''\\3%'\\\\''AND b.pubdate >= '\\\\''\\2-01-01'\\\\'' AND b.pubdate <= '\\\\''\\2-12-31'\\\\'' LIMIT 1" (word-at-point))))
         (mark-word)
         (calibre-find (calibre-build-default-query where-string)))
@@ -216,14 +216,16 @@
                                          ((string= "a" opr)
                                           (mark-aware-copy-insert
                                                    (calibre-chomp (getattr res :author-sort))))
-                                         (t (message "cancelled"))))
+                                         (t
+                                          (deactivate-mark)
+                                          (message "cancelled"))))
 
                                  ))
                               ("p" "insert file path"
                                (lambda (res) (mark-aware-copy-insert (getattr res :file-path))))
                               ("t" "insert title"
                                (lambda (res) (mark-aware-copy-insert (getattr res :book-title))))
-                              ("j" "insert json"
+                              ("j" "insert entry json"
                                (lambda (res) (mark-aware-copy-insert (json-encode res))))
                               ("X" "open as plaintext in new buffer (via pdftotext)"
                                (lambda (res)
@@ -244,7 +246,9 @@
                                        (switch-to-buffer-other-window pdftotext-out-buffer)
                                        (beginning-of-buffer))))))
                               ("q" "(or anything else) to cancel"
-                               (lambda (res) (message "cancelled")))))
+                               (lambda (res)
+                                 (deactivate-mark)
+                                 (message "cancelled")))))
 
 (defun calibre-find (&optional custom-query)
   (interactive)
