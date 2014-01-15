@@ -26,7 +26,7 @@
                                                            (shell-command-to-string "xdg-mime query default application/pdf")))))
 
                          (mapcar
-                          '(lambda (dir) (let ((outdir (concat dir "/" mime-appname))) (if (file-exists-p outdir) outdir)))
+                          #'(lambda (dir) (let ((outdir (concat dir "/" mime-appname))) (if (file-exists-p outdir) outdir)))
                           '("~/.local/share/applications" "/usr/local/share/applications" "/usr/share/applications")))))
             "|awk '{print $1}'|cut -d '=' -f 2"))))
         ((eq system-type 'windows-nt)
@@ -251,18 +251,18 @@
             (let ((opr (char-to-string (read-char
                                         ;; render menu text here
                                         (concat "[" (getattr res :book-name) "] found ... what do?\n"
-                                                (mapconcat '(lambda (handler-list)
-                                                              (let ((hotkey      (elt handler-list 0))
-                                                                    (description (elt handler-list 1))
-                                                                    (handler-fn  (elt handler-list 2)))
-                                                                ;; ULGY BANDAIT HACK
-                                                                ;; replace "insert" with "copy to clipboard" if mark-active
-                                                                (format " %s :   %s"
-                                                                        hotkey
-                                                                        (if mark-active
-                                                                            (replace-regexp-in-string "insert \\(.*\\)" "copy \\1 to clipboard" description)
-                                                                          description)))
-                                                              ) calibre-handler-alist "\n"))))))
+                                                (mapconcat #'(lambda (handler-list)
+                                                               (let ((hotkey      (elt handler-list 0))
+                                                                     (description (elt handler-list 1))
+                                                                     (handler-fn  (elt handler-list 2)))
+                                                                 ;; ULGY BANDAIT HACK
+                                                                 ;; replace "insert" with "copy to clipboard" if mark-active
+                                                                 (format " %s :   %s"
+                                                                         hotkey
+                                                                         (if mark-active
+                                                                             (replace-regexp-in-string "insert \\(.*\\)" "copy \\1 to clipboard" description)
+                                                                           description)))
+                                                               ) calibre-handler-alist "\n"))))))
               (funcall
                (elt (if (null (assoc opr calibre-handler-alist)) (assoc "q" calibre-handler-alist)
                       (assoc opr calibre-handler-alist)) 2) res))
