@@ -168,6 +168,13 @@
      (substring (getattr calibre-res-alist :book-pubdate) 0 4)
      (downcase (replace-regexp-in-string  "\\W.*" "" first-word-in-title)))))
 
+(defun mark-aware-copy-insert (content)
+  "copy to clipboard if mark active, else insert"
+  (if mark-active
+      (progn (kill-new content)
+             (deactivate-mark))
+    (insert content)))
+
 ;; define the result handlers here in the form of (hotkey description handler-function)
 ;; where handler-function takes 1 alist argument containing the result record
 (setq calibre-handler-alist '(("o" "open"
@@ -184,13 +191,12 @@
                                                                   xoj-file-path
                                                                 (getattr res :file-path))))))
                               ("s" "insert calibre search string"
-                               (lambda (res) (funcall (if mark-active 'kill-new 'insert) (concat "title:\"" (getattr res :book-title) "\""))))
+                               (lambda (res) (mark-aware-copy-insert (concat "title:\"" (getattr res :book-title) "\""))))
                               ("c" "insert citekey"
-                               (lambda (res) (funcall (if mark-active 'kill-new 'insert) (calibre-make-citekey res))))
+                               (lambda (res) (mark-aware-copy-insert (calibre-make-citekey res))))
                               ("i" "get book information (SELECT IN NEXT MENU) and insert"
                                (lambda (res)
-                                 (let ((usefunc (if mark-active 'kill-new 'insert))
-                                       (opr (char-to-string (read-char
+                                 (let ((opr (char-to-string (read-char
                                                              ;; render menu text here
                                                              (concat "What information do you want?\n"
                                                                      "i : values in the book's `Ids` field (ISBN, DOI...)\n"
@@ -198,25 +204,27 @@
                                                                      "a : author list\n")))))
                                    (cond ((string= "i" opr)
                                           ;; stupidly just insert the plain text result
-                                          (funcall usefunc
+                                          (mark-aware-copy-insert
                                                    (calibre-chomp
                                                     (calibre-query (concat "SELECT "
                                                                            "idf.type, idf.val "
                                                                            "FROM identifiers AS idf "
                                                                            (format "WHERE book = %s" (getattr res :id)))))))
                                          ((string= "d" opr)
-                                          (funcall usefunc
+                                          (mark-aware-copy-insert
                                                    (substring (getattr res :book-pubdate) 0 10)))
                                          ((string= "a" opr)
-                                          (funcall usefunc
+                                          (mark-aware-copy-insert
                                                    (calibre-chomp (getattr res :author-sort))))
                                          (t (message "cancelled"))))
 
                                  ))
                               ("p" "insert file path"
-                               (lambda (res) (funcall (if mark-active 'kill-new 'insert) (getattr res :file-path))))
+                               (lambda (res) (mark-aware-copy-insert (getattr res :file-path))))
                               ("t" "insert title"
-                               (lambda (res) (funcall (if mark-active 'kill-new 'insert) (getattr res :book-title))))
+                               (lambda (res) (mark-aware-copy-insert (getattr res :book-title))))
+                              ("j" "insert json"
+                               (lambda (res) (mark-aware-copy-insert (json-encode res))))
                               ("X" "open as plaintext in new buffer (via pdftotext)"
                                (lambda (res)
                                  (let* ((citekey (calibre-make-citekey res))
