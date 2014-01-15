@@ -143,7 +143,7 @@
               ;; capture all up to optional "etal" into group \1
               ;; capture 4 digits of date          into group \2
               ;; capture first word in title       into group \3
-              "\\b\\(.+?\\)\\(?:etal\\)?\\([[:digit:]]\\\{4\\\}\\)\\(.*\\)\\b"
+              "\\b\\([^ :;,.]+?\\)\\(?:etal\\)?\\([[:digit:]]\\\{4\\\}\\)\\(.*?\\)\\b"
               "WHERE lower(b.author_sort) LIKE '\\\\''%\\1%'\\\\'' AND lower(b.title) LIKE '\\\\''\\3%'\\\\''AND b.pubdate >= '\\\\''\\2-01-01'\\\\'' AND b.pubdate <= '\\\\''\\2-12-31'\\\\'' LIMIT 1" (word-at-point))))
         (mark-word)
         (calibre-find (calibre-build-default-query where-string)))
