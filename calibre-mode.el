@@ -263,7 +263,9 @@
                       (calibre-build-default-query (calibre-read-query-filter-command) 1)))
          (query-result (calibre-query sql-query)))
     (if (= 0 (length query-result))
-        (message "nothing found.")
+        (progn
+          (message "nothing found.")
+          (deactivate-mark))
       (let ((res (calibre-query-to-alist query-result)))
         (if (file-exists-p (getattr res :file-path))
             (let ((opr (char-to-string (read-char
