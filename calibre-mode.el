@@ -159,14 +159,20 @@
 
 (defun calibre-make-citekey (calibre-res-alist)
   "return some kind of a unique citation key for BibTeX use"
-  (let* ((spl (split-string (calibre-chomp (getattr calibre-res-alist :author-sort)) "&"))
+  (let* ((stopword-list '("the" "on" "a"))
+         (spl (split-string (calibre-chomp (getattr calibre-res-alist :author-sort)) "&"))
          (first-author-lastname (first (split-string (first spl) ",")))
-         (first-word-in-title (first (split-string (getattr calibre-res-alist :book-title) " "))))
+         (first-useful-word-in-title
+          ;; ref fitlering in http://www.emacswiki.org/emacs/ElispCookbook#toc39
+          (first (delq nil
+                  (mapcar
+                   (lambda (token) (if (member token stopword-list) nil token))
+                   (split-string (downcase (getattr calibre-res-alist :book-title)) " "))))))
     (concat
      (downcase (replace-regexp-in-string  "\\W" "" first-author-lastname))
      (if (< 1 (length spl)) "etal" "")
      (substring (getattr calibre-res-alist :book-pubdate) 0 4)
-     (downcase (replace-regexp-in-string  "\\W.*" "" first-word-in-title)))))
+     (downcase (replace-regexp-in-string  "\\W.*" "" first-useful-word-in-title)))))
 
 (defun mark-aware-copy-insert (content)
   "copy to clipboard if mark active, else insert"
