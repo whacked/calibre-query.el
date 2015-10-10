@@ -1,3 +1,5 @@
+(require 'cl)
+
 (defvar calibre-root-dir (expand-file-name "~/Calibre Library"))
 (defvar calibre-db (concat calibre-root-dir "/metadata.db"))
 
