@@ -28,7 +28,7 @@
                          (mapcar
                           #'(lambda (dir) (let ((outdir (concat dir "/" mime-appname))) (if (file-exists-p outdir) outdir)))
                           '("~/.local/share/applications" "/usr/local/share/applications" "/usr/share/applications")))))
-            "|awk '{print $1}'|cut -d '=' -f 2"))))
+            "|head -1|awk '{print $1}'|cut -d '=' -f 2"))))
         ((eq system-type 'windows-nt)
          ;; based on
          ;; http://stackoverflow.com/questions/501290/windows-equivalent-of-the-mac-os-x-open-command
