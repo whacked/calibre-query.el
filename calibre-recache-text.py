@@ -1,3 +1,20 @@
+'''
+this file is probably going to be removed in the future
+
+commentary:
+
+reads list of books from calibre; in this particular use case, it is expecting pdfs to be papers (academic publications).
+
+motivation:
+
+facilitate grepping and copy/paste for paper contents from emacs / CLI
+
+overview:
+
+for each of the pdfs, it runs pdftotext to extract plain text from the pdfs, and saves them into a predesignated OUTPUTDIR
+as a plain text file format (here, .org), using a layout defined by the (string.Template) defined at `tpl_text`
+
+'''
 
 from __future__ import (print_function)
 import os, sys
