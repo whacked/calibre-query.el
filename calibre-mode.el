@@ -40,8 +40,6 @@
          "open")
         (t (message "unknown system!?"))))
 
-(defvar calibre-text-cache-dir (expand-file-name "~/note/org/.calibre"))
-
 ;; CREATE TABLE pdftext ( filepath CHAR(255) PRIMARY KEY, content TEXT );
 ;; (defvar calibre-text-cache-db (expand-file-name "~/Documents/pdftextcache.db"))
 ;; (defun calibre-get-cached-pdf-text (pdf-filepath)
@@ -151,11 +149,6 @@
         (calibre-find (calibre-build-default-query where-string)))
     (message "nothing at point!")))
 
-(defun calibre-make-text-cache-path-from-citekey (citekey)
-  (concat calibre-text-cache-dir "/" citekey "/text.org"))
-(defun calibre-make-note-cache-path-from-citekey (citekey)
-  (concat calibre-text-cache-dir "/" citekey "/note.org"))
-
 (defun getattr (my-alist key)
   (cadr (assoc key my-alist)))
 
@@ -237,22 +230,12 @@
                                (lambda (res) (mark-aware-copy-insert (json-encode res))))
                               ("X" "open as plaintext in new buffer (via pdftotext)"
                                (lambda (res)
-                                 (let* ((citekey (calibre-make-citekey res))
-                                        (cached-text-path (calibre-make-text-cache-path-from-citekey citekey))
-                                        (cached-note-path (calibre-make-note-cache-path-from-citekey citekey)))
-                                   (if (file-exists-p cached-text-path)
-                                       (progn
-                                         (find-file-other-window cached-text-path)
-                                         (when (file-exists-p cached-note-path)
-                                           (split-window-horizontally)
-                                           (find-file-other-window cached-note-path)
-                                           (org-open-link-from-string "[[note]]")
-                                           (forward-line 2)))
-                                     (let* ((pdftotext-out-buffer (get-buffer-create (format "pdftotext-extract-%s" (getattr res :id)))))
-                                       (set-buffer pdftotext-out-buffer)
-                                       (insert (shell-command-to-string (concat "pdftotext '" (getattr res :file-path) "' -")))
-                                       (switch-to-buffer-other-window pdftotext-out-buffer)
-                                       (beginning-of-buffer))))))
+                                 (let* ((citekey (calibre-make-citekey res)))
+                                   (let* ((pdftotext-out-buffer (get-buffer-create (format "pdftotext-extract-%s" (getattr res :id)))))
+                                     (set-buffer pdftotext-out-buffer)
+                                     (insert (shell-command-to-string (concat "pdftotext '" (getattr res :file-path) "' -")))
+                                     (switch-to-buffer-other-window pdftotext-out-buffer)
+                                     (beginning-of-buffer)))))
                               ("q" "(or anything else) to cancel"
                                (lambda (res)
                                  (deactivate-mark)
