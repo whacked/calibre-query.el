@@ -19,3 +19,7 @@ Prompts for a search string and displays all records which match on title or aut
 ## M-x calibre-find
 
 Prompts for a search string.  Matches the first record which would have been matched by calibre-list.  Offers several options for opening the work.
+
+# assorted memo
+
+- in commits prior to f3f16df57a2fc37b9baa5fe09f0e8aa0e226ac52 there is a `calibre-recache-text.py` file. this is a script that reads through the calibre db, finds pdfs, and calls `pdftotext` on them to extract text.
