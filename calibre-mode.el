@@ -241,88 +241,66 @@
                                  (deactivate-mark)
                                  (message "cancelled")))))
 
+(defun calibre-file-interaction-menu (calibre-item)
+  (if (file-exists-p (getattr calibre-item :file-path))
+      (let ((opr (char-to-string (read-char
+                                  ;; render menu text here
+                                  (concat (format "(%s) [%s] found, what do?\n"
+                                                  (getattr calibre-item :book-format)
+                                                  (getattr calibre-item :book-name))
+                                          (mapconcat #'(lambda (handler-list)
+                                                         (let ((hotkey      (elt handler-list 0))
+                                                               (description (elt handler-list 1))
+                                                               (handler-fn  (elt handler-list 2)))
+                                                           ;; ULGY BANDAID HACK
+                                                           ;; replace "insert" with "copy to clipboard" if mark-active
+                                                           (format " %s :   %s"
+                                                                   hotkey
+                                                                   (if mark-active
+                                                                       (replace-regexp-in-string "insert \\(.*\\)" "copy \\1 to clipboard" description)
+                                                                     description)))
+                                                         ) calibre-handler-alist "\n"))))))
+        (funcall
+         (elt (if (null (assoc opr calibre-handler-alist)) (assoc "q" calibre-handler-alist)
+                (assoc opr calibre-handler-alist)) 2) calibre-item))
+    (message "didn't find that file")))
+
+(defun calibre-format-selector-menu (calibre-item-list)
+  (let* ((chosen-number
+          (char-to-string
+           (read-char
+            ;; render menu text here
+            (let ((num-result (length calibre-item-list)))
+              (concat (format "%d matches for '%s'. pick target format?\n"
+                              num-result
+                              (getattr (car calibre-item-list) :book-title))
+                      (mapconcat #'(lambda (idx)
+                                     (let ((item (nth idx calibre-item-list)))
+                                       (format "   (%s) %s"
+                                               (1+ idx)
+                                               (getattr item :book-format))))
+                                 (number-sequence 0 (1- num-result))
+                                 "\n"))))))
+         (chosen-item (nth (1- (string-to-int chosen-number)) calibre-item-list)))
+    (calibre-file-interaction-menu chosen-item)))
+
 (defun calibre-find (&optional custom-query)
   (interactive)
   (let* ((sql-query (if custom-query
                         custom-query
-                      (calibre-build-default-query (calibre-read-query-filter-command) 1)))
-         (query-result (calibre-query sql-query)))
-    (if (= 0 (length query-result))
+                      (calibre-build-default-query (calibre-read-query-filter-command))))
+         (query-result (calibre-query sql-query))
+         (line-list (split-string (calibre-chomp query-result) "\n"))
+         (num-result (length line-list)))
+    (if (= 0 num-result)
         (progn
           (message "nothing found.")
           (deactivate-mark))
-      (let ((res (calibre-query-to-alist query-result)))
-        (if (file-exists-p (getattr res :file-path))
-            (let ((opr (char-to-string (read-char
-<<<<<<< HEAD
-                                        (concat "found " book-name ". [o]pen open[O]ther open[e]xt [c]itekey [p]ath [t]ext [q]uit")))))
-              (cond ((string= "o" opr)
-                     (find-file-other-window found-file-path))
-                    ((string= "O" opr)
-                     (find-file-other-frame found-file-path))
-                    ((string= "e" opr)
-                     (start-process "xournal-process" "*Messages*" "/usr/local/bin/xournal" (if (file-exists-p xoj-file-path)
-                                                                                 xoj-file-path
-                                                                               found-file-path))
-                     )
-                    ((string= "c" opr)
-                     (insert citekey))
-                    ((string= "p" opr)
-                     (insert found-file-path "\n"))
-                    ((string= "t" opr)
-                     (let ((cached-text-path (calibre-make-text-cache-path-from-citekey citekey))
-                           ;;(cached-note-path (calibre-make-note-cache-path-from-citekey citekey))
-                           )
-                       (if (file-exists-p cached-text-path)
-                           (progn
-                             (find-file-other-window cached-text-path)
-                             (rename-buffer (concat "note-" citekey))
-                             (when nil
-                              (when (file-exists-p cached-note-path)
-                               (split-window-horizontally)
-                               (find-file-other-window cached-note-path)
-                               (rename-buffer (concat "note-" citekey))
-                               (org-open-link-from-string "[[note]]")
-                               (forward-line 2)))
-                             )
-                         
-                         (let* ((pdftotext-out-buffer (get-buffer-create (format "pdftotext-extract-%s" calibre-id))))
-                           (set-buffer pdftotext-out-buffer)
-                           (insert (shell-command-to-string (concat "pdftotext '" found-file-path "' -")))
-                           (switch-to-buffer-other-window pdftotext-out-buffer)
-                           (beginning-of-buffer)
-                           ))))
-                    (t
-                     (message "quit"))
-                    )
-              )
-          (message "didn't find that file"))))))
-
-(global-set-key "\C-cK" 'calibre-open-citekey)
-(global-set-key "\C-cE" 'calibre-grab-extract)
-(global-set-key "\C-cF" 'calibre-find)
-
-=======
-                                        ;; render menu text here
-                                        (concat "[" (getattr res :book-name) "] found ... what do?\n"
-                                                (mapconcat #'(lambda (handler-list)
-                                                               (let ((hotkey      (elt handler-list 0))
-                                                                     (description (elt handler-list 1))
-                                                                     (handler-fn  (elt handler-list 2)))
-                                                                 ;; ULGY BANDAIT HACK
-                                                                 ;; replace "insert" with "copy to clipboard" if mark-active
-                                                                 (format " %s :   %s"
-                                                                         hotkey
-                                                                         (if mark-active
-                                                                             (replace-regexp-in-string "insert \\(.*\\)" "copy \\1 to clipboard" description)
-                                                                           description)))
-                                                               ) calibre-handler-alist "\n"))))))
-              (funcall
-               (elt (if (null (assoc opr calibre-handler-alist)) (assoc "q" calibre-handler-alist)
-                      (assoc opr calibre-handler-alist)) 2) res))
-          (message "didn't find that file"))))))
+      (let ((res-list (mapcar '(lambda (line) (calibre-query-to-alist line)) line-list)))
+        (if (= 1 (length res-list))
+            (calibre-file-interaction-menu (car res-list))
+          (calibre-format-selector-menu res-list))))))
 
 (global-set-key "\C-cK" 'calibre-open-citekey)
 
 (provide 'calibre-mode)
->>>>>>> master
