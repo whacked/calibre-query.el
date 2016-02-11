@@ -288,7 +288,7 @@
   (interactive)
   (let* ((sql-query (if custom-query
                         custom-query
-                      (calibre-build-default-query (calibre-read-query-filter-command) 1)))
+                      (calibre-build-default-query (calibre-read-query-filter-command))))
          (query-result (calibre-query sql-query))
          (line-list (split-string (calibre-chomp query-result) "\n"))
          (num-result (length line-list)))
