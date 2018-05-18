@@ -292,13 +292,13 @@
            (read-char
             ;; render menu text here
             (let ((num-result (length calibre-item-list)))
-              (concat (format "%d matches for '%s'. pick target format?\n"
-                              num-result
-                              (getattr (car calibre-item-list) :book-title))
+              (concat (format "%d matches. Pick target:\n" num-result)
                       (mapconcat #'(lambda (idx)
                                      (let ((item (nth idx calibre-item-list)))
-                                       (format "   (%s) %s"
+                                       (format "   (%s) %s %s %s "
                                                (1+ idx)
+                                               (getattr item :author-sort)
+                                               (getattr item :book-title)
                                                (getattr item :book-format))))
                                  (number-sequence 0 (1- num-result))
                                  "\n"))))))
