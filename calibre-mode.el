@@ -97,7 +97,7 @@
   (interactive)
   (let* ((default-string (if mark-active (calibre-chomp (buffer-substring (mark) (point)))))
          ;; prompt &optional initial keymap read history default
-         (search-string (read-string (format "search string%s: "
+         (search-string (read-string (format "Search Calibre for%s: "
                                              (if default-string
                                                  (concat " [" default-string "]")
                                                "")) nil nil default-string))
