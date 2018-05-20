@@ -287,23 +287,21 @@
     (message "didn't find that file")))
 
 (defun calibre-format-selector-menu (calibre-item-list)
-  (let* ((chosen-number
-          (char-to-string
-           (read-char
-            ;; render menu text here
-            (let ((num-result (length calibre-item-list)))
-              (concat (format "%d matches. Pick target:\n" num-result)
-                      (mapconcat #'(lambda (idx)
-                                     (let ((item (nth idx calibre-item-list)))
-                                       (format "   (%s) %s %s %s "
-                                               (1+ idx)
-                                               (getattr item :author-sort)
-                                               (getattr item :book-title)
-                                               (getattr item :book-format))))
-                                 (number-sequence 0 (1- num-result))
-                                 "\n"))))))
-         (chosen-item (nth (1- (string-to-int chosen-number)) calibre-item-list)))
-    (calibre-file-interaction-menu chosen-item)))
+  (let ((chosen-item
+         (completing-read "Pick book: "
+                          (mapcar (lambda (item)
+                                    (string-join
+                                     (list (getattr item :id)
+                                           (getattr item :book-title)
+                                           (getattr item :author-sort)
+                                           (getattr item :book-format))
+                                     ", "))
+                                  calibre-item-list)
+                          nil t)))
+    (calibre-file-interaction-menu (find-if (lambda (x)
+                                              (equal (getattr x :id)
+                                                     (car (split-string chosen-item "\\,"))))
+                                            calibre-item-list))))
 
 (defun calibre-find (&optional custom-query)
   (interactive)
