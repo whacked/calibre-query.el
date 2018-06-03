@@ -97,7 +97,7 @@
   (interactive)
   (let* ((default-string (if mark-active (calibre-chomp (buffer-substring (mark) (point)))))
          ;; prompt &optional initial keymap read history default
-         (search-string (read-string (format "search string%s: "
+         (search-string (read-string (format "Search Calibre for%s: "
                                              (if default-string
                                                  (concat " [" default-string "]")
                                                "")) nil nil default-string))
@@ -176,70 +176,91 @@
              (deactivate-mark))
     (insert content)))
 
-;; define the result handlers here in the form of (hotkey description handler-function)
-;; where handler-function takes 1 alist argument containing the result record
-(setq calibre-handler-alist '(("o" "open"
-                               (lambda (res) (find-file-other-window (getattr res :file-path))))
-                              ("O" "open other frame"
-                               (lambda (res) (find-file-other-frame (getattr res :file-path))))
-                              ("v" "open with default viewer"
-                               (lambda (res)
-                                 (start-process "shell-process" "*Messages*" calibre-default-opener (getattr res :file-path))))
-                              ("x" "open with xournal"
-                               (lambda (res) (start-process "xournal-process" "*Messages*" "xournal"
-                                                            (let ((xoj-file-path (concat calibre-root-dir "/" (getattr res :book-dir) "/" (getattr res :book-name) ".xoj")))
-                                                              (if (file-exists-p xoj-file-path)
-                                                                  xoj-file-path
-                                                                (getattr res :file-path))))))
-                              ("s" "insert calibre search string"
-                               (lambda (res) (mark-aware-copy-insert (concat "title:\"" (getattr res :book-title) "\""))))
-                              ("c" "insert citekey"
-                               (lambda (res) (mark-aware-copy-insert (calibre-make-citekey res))))
-                              ("i" "get book information (SELECT IN NEXT MENU) and insert"
-                               (lambda (res)
-                                 (let ((opr (char-to-string (read-char
-                                                             ;; render menu text here
-                                                             (concat "What information do you want?\n"
-                                                                     "i : values in the book's `Ids` field (ISBN, DOI...)\n"
-                                                                     "d : pubdate\n"
-                                                                     "a : author list\n")))))
-                                   (cond ((string= "i" opr)
-                                          ;; stupidly just insert the plain text result
-                                          (mark-aware-copy-insert
-                                                   (calibre-chomp
-                                                    (calibre-query (concat "SELECT "
-                                                                           "idf.type, idf.val "
-                                                                           "FROM identifiers AS idf "
-                                                                           (format "WHERE book = %s" (getattr res :id)))))))
-                                         ((string= "d" opr)
-                                          (mark-aware-copy-insert
-                                                   (substring (getattr res :book-pubdate) 0 10)))
-                                         ((string= "a" opr)
-                                          (mark-aware-copy-insert
-                                                   (calibre-chomp (getattr res :author-sort))))
-                                         (t
-                                          (deactivate-mark)
-                                          (message "cancelled"))))
-
-                                 ))
-                              ("p" "insert file path"
-                               (lambda (res) (mark-aware-copy-insert (getattr res :file-path))))
-                              ("t" "insert title"
-                               (lambda (res) (mark-aware-copy-insert (getattr res :book-title))))
-                              ("j" "insert entry json"
-                               (lambda (res) (mark-aware-copy-insert (json-encode res))))
-                              ("X" "open as plaintext in new buffer (via pdftotext)"
-                               (lambda (res)
-                                 (let* ((citekey (calibre-make-citekey res)))
-                                   (let* ((pdftotext-out-buffer (get-buffer-create (format "pdftotext-extract-%s" (getattr res :id)))))
-                                     (set-buffer pdftotext-out-buffer)
-                                     (insert (shell-command-to-string (concat "pdftotext '" (getattr res :file-path) "' -")))
-                                     (switch-to-buffer-other-window pdftotext-out-buffer)
-                                     (beginning-of-buffer)))))
-                              ("q" "(or anything else) to cancel"
-                               (lambda (res)
-                                 (deactivate-mark)
-                                 (message "cancelled")))))
+;; Define the result handlers here in the form of (hotkey description
+;; handler-function) where handler-function takes 1 alist argument
+;; containing the result record.
+(setq calibre-handler-alist
+      '(("o" "open"
+         (lambda (res) (find-file-other-window (getattr res :file-path))))
+        ("O" "open other frame"
+         (lambda (res) (find-file-other-frame (getattr res :file-path))))
+        ("v" "open with default viewer"
+         (lambda (res)
+           (start-process "shell-process" "*Messages*" calibre-default-opener
+                          (getattr res :file-path))))
+        ("x" "open with xournal"
+         (lambda (res)
+           (start-process "xournal-process" "*Messages*" "xournal"
+                          (let ((xoj-file-path (concat calibre-root-dir "/"
+                                                       (getattr res :book-dir)
+                                                       "/"
+                                                       (getattr res :book-name)
+                                                       ".xoj")))
+                            (if (file-exists-p xoj-file-path)
+                                xoj-file-path
+                              (getattr res :file-path))))))
+        ("s" "insert calibre search string"
+         (lambda (res) (mark-aware-copy-insert
+                        (concat "title:\"" (getattr res :book-title) "\""))))
+        ("c" "insert citekey"
+         (lambda (res) (mark-aware-copy-insert (calibre-make-citekey res))))
+        ("i" "get book information (SELECT IN NEXT MENU) and insert"
+         (lambda (res)
+           (let ((opr
+                  (char-to-string
+                   (read-char
+                    ;; render menu text here
+                    (concat "What information do you want?\n"
+                            "i : values in the book's `Ids` field (ISBN, DOI...)\n"
+                            "d : pubdate\n"
+                            "a : author list\n")))))
+             (cond ((string= "i" opr)
+                    ;; stupidly just insert the plain text result
+                    (mark-aware-copy-insert
+                     (calibre-chomp
+                      (calibre-query
+                       (concat "SELECT "
+                               "idf.type, idf.val "
+                               "FROM identifiers AS idf "
+                               (format "WHERE book = %s" (getattr res :id)))))))
+                   ((string= "d" opr)
+                    (mark-aware-copy-insert
+                     (substring (getattr res :book-pubdate) 0 10)))
+                   ((string= "a" opr)
+                    (mark-aware-copy-insert
+                     (calibre-chomp (getattr res :author-sort))))
+                   (t
+                    (deactivate-mark)
+                    (message "cancelled"))))))
+        ("p" "insert file path"
+         (lambda (res) (mark-aware-copy-insert (getattr res :file-path))))
+        ("t" "insert title"
+         (lambda (res) (mark-aware-copy-insert (getattr res :book-title))))
+        ("g" "insert org link"
+         (lambda (res)
+           (insert (format "[[%s][%s]]"
+                           (getattr res :file-path)
+                           (concat (calibre-chomp (getattr res :author-sort))
+                                   ", "
+                                   (getattr res :book-title))))))
+        ("j" "insert entry json"
+         (lambda (res) (mark-aware-copy-insert (json-encode res))))
+        ("X" "open as plaintext in new buffer (via pdftotext)"
+         (lambda (res)
+           (let* ((citekey (calibre-make-citekey res)))
+             (let* ((pdftotext-out-buffer
+                     (get-buffer-create
+                      (format "pdftotext-extract-%s" (getattr res :id)))))
+               (set-buffer pdftotext-out-buffer)
+               (insert (shell-command-to-string (concat "pdftotext '"
+                                                        (getattr res :file-path)
+                                                        "' -")))
+               (switch-to-buffer-other-window pdftotext-out-buffer)
+               (beginning-of-buffer)))))
+        ("q" "(or anything else) to cancel"
+         (lambda (res)
+           (deactivate-mark)
+           (message "cancelled")))))
 
 (defun calibre-file-interaction-menu (calibre-item)
   (if (file-exists-p (getattr calibre-item :file-path))
@@ -266,23 +287,21 @@
     (message "didn't find that file")))
 
 (defun calibre-format-selector-menu (calibre-item-list)
-  (let* ((chosen-number
-          (char-to-string
-           (read-char
-            ;; render menu text here
-            (let ((num-result (length calibre-item-list)))
-              (concat (format "%d matches for '%s'. pick target format?\n"
-                              num-result
-                              (getattr (car calibre-item-list) :book-title))
-                      (mapconcat #'(lambda (idx)
-                                     (let ((item (nth idx calibre-item-list)))
-                                       (format "   (%s) %s"
-                                               (1+ idx)
-                                               (getattr item :book-format))))
-                                 (number-sequence 0 (1- num-result))
-                                 "\n"))))))
-         (chosen-item (nth (1- (string-to-int chosen-number)) calibre-item-list)))
-    (calibre-file-interaction-menu chosen-item)))
+  (let ((chosen-item
+         (completing-read "Pick book: "
+                          (mapcar (lambda (item)
+                                    (string-join
+                                     (list (getattr item :id)
+                                           (getattr item :book-title)
+                                           (getattr item :author-sort)
+                                           (getattr item :book-format))
+                                     ", "))
+                                  calibre-item-list)
+                          nil t)))
+    (calibre-file-interaction-menu (find-if (lambda (x)
+                                              (equal (getattr x :id)
+                                                     (car (split-string chosen-item "\\,"))))
+                                            calibre-item-list))))
 
 (defun calibre-find (&optional custom-query)
   (interactive)
