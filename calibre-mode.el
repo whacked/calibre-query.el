@@ -1,11 +1,51 @@
 (require 'cl)
 (require 'sql)
 
-(defvar calibre-root-dir (expand-file-name "~/Calibre Library"))
-(defvar calibre-db (concat calibre-root-dir "/metadata.db"))
-
+;; UTILITY
 (defun calibre-chomp (s)
   (replace-regexp-in-string "[\s\n]+$" "" s))
+
+(defun quote-% (str)
+  (replace-regexp-in-string "%" "%%" str))
+
+(setq calibre--calibre-library-name "Calibre Library")
+
+(defun calibre--find-library-filepath ()
+  (or
+   ;; if global.py exists, parse it for "library_path"
+   (let ((calibre-global-py-filepath (expand-file-name "~/calibre/global.py")))
+     (when (file-exists-p calibre-global-py-filepath)
+       (with-temp-buffer
+         (insert-file-contents calibre-global-py-filepath)
+         (delete-non-matching-lines "library_path")
+         (goto-char (point-min))
+         (while (search-forward-regexp
+                 "library_path *= *\\u?['\"]\\(.+\\)['\"]" nil t)
+           (replace-match "\\1"))
+         (goto-char (point-min))
+         (while (search-forward "\\\\" nil t)
+           (replace-match "\\" nil t))
+         (file-name-as-directory (calibre-chomp (buffer-string))))))
+   ;; look for default candidates
+   (first
+    (seq-remove
+     (lambda (maybe-path)
+       (or (null maybe-path)
+           (not (file-exists-p
+                 maybe-path))))
+     (list
+      (when (getenv "UserProfile")
+        (concat (file-name-as-directory (getenv "UserProfile"))
+                calibre--calibre-library-name))
+      (expand-file-name (concat "~/"
+                                calibre--calibre-library-name)))))))
+
+
+(defvar calibre-root-dir (calibre--find-library-filepath))
+
+(defvar calibre-db
+  (concat (file-name-as-directory
+           calibre-root-dir) "metadata.db"))
 
 (defvar calibre-default-opener
   (cond ((eq system-type 'gnu/linux)
