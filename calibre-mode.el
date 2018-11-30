@@ -75,11 +75,19 @@
         ((eq system-type 'windows-nt)
          ;; based on
          ;; http://stackoverflow.com/questions/501290/windows-equivalent-of-the-mac-os-x-open-command
-         ;; but no idea if it actuall works
+         ;; but no idea if it actually works
          "start")
         ((eq system-type 'darwin)
          "open")
         (t (message "unknown system!?"))))
+
+;; TODO: consolidate default-opener with dispatcher
+(defun calibre-open-with-default-opener (filepath)
+  (if (eq system-type 'windows-nt)
+      (start-process "shell-process" "*Messages*"
+                     "cmd.exe" "/c" filepath)
+    (start-process "shell-process" "*Messages*"
+                   calibre-default-opener filepath)))
 
 ;; CREATE TABLE pdftext ( filepath CHAR(255) PRIMARY KEY, content TEXT );
 ;; (defvar calibre-text-cache-db (expand-file-name "~/Documents/pdftextcache.db"))
