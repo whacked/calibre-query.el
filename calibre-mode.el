@@ -105,11 +105,13 @@
 ;; (shell-command-to-string
 ;;  (format "%s -separator '\t' '%s' '%s'" sql-sqlite-program calibre-db ".schema books"))
 
-
 (defun calibre-query (sql-query)
   (interactive)
   (shell-command-to-string
-   (format "%s -separator '\t' '%s' '%s'" sql-sqlite-program calibre-db sql-query)))
+   (format "%s -separator \"\t\" \"%s\" \"%s\""
+           sql-sqlite-program
+           (replace-regexp-in-string "\"" "\\\\\"" calibre-db)
+           sql-query)))
 
 (defun calibre-query-to-alist (query-result)
   "builds alist out of a full calibre-query query record result"
@@ -133,14 +135,12 @@
           "LEFT OUTER JOIN books AS b ON d.book = b.id "
           whereclause
           (when limit
-            (format "LIMIT %s" limit))
-          ))
+            (format "LIMIT %s" limit))))
 
 (defun calibre-query-by-field (wherefield argstring)
-  (concat "WHERE lower(" wherefield ") LIKE '\\''%%"
+  (concat "WHERE lower(" wherefield ") LIKE '%%"
           (format "%s" (downcase argstring))
-          "%%'\\''"
-          ))
+          "%%'"))
 
 (defun calibre-read-query-filter-command ()
   (interactive)
@@ -162,11 +162,8 @@
                        "b.title")
                       )))
           (calibre-query-by-field wherefield argstring))
-      (format "WHERE lower(b.author_sort) LIKE '\\''%%%s%%'\\'' OR lower(b.title) LIKE '\\''%%%s%%'\\''"
+      (format "WHERE lower(b.author_sort) LIKE '%%%s%%' OR lower(b.title) LIKE '%%%s%%'"
               (downcase search-string) (downcase search-string)))))
-
-(defun quote-% (str)
-  (replace-regexp-in-string "%" "%%" str))
 
 (defun calibre-list ()
   (interactive)
@@ -193,7 +190,7 @@
               ;; capture 4 digits of date          into group \2
               ;; capture first word in title       into group \3
               "\\b\\([^ :;,.]+?\\)\\(?:etal\\)?\\([[:digit:]]\\\{4\\\}\\)\\(.*?\\)\\b"
-              "WHERE lower(b.author_sort) LIKE '\\\\''%\\1%'\\\\'' AND lower(b.title) LIKE '\\\\''\\3%'\\\\''AND b.pubdate >= '\\\\''\\2-01-01'\\\\'' AND b.pubdate <= '\\\\''\\2-12-31'\\\\'' LIMIT 1" (word-at-point))))
+              "WHERE lower(b.author_sort) LIKE '%\\1%' AND lower(b.title) LIKE '\\3%' AND b.pubdate >= '\\2-01-01' AND b.pubdate <= '\\2-12-31' LIMIT 1" (word-at-point))))
         (mark-word)
         (calibre-find (calibre-build-default-query where-string)))
     (message "nothing at point!")))
@@ -235,8 +232,7 @@
          (lambda (res) (find-file-other-frame (getattr res :file-path))))
         ("v" "open with default viewer"
          (lambda (res)
-           (start-process "shell-process" "*Messages*" calibre-default-opener
-                          (getattr res :file-path))))
+           (calibre-open-with-default-opener (getattr res :file-path))))
         ("x" "open with xournal"
          (lambda (res)
            (start-process "xournal-process" "*Messages*" "xournal"
@@ -364,7 +360,7 @@
         (progn
           (message "nothing found.")
           (deactivate-mark))
-      (let ((res-list (mapcar '(lambda (line) (calibre-query-to-alist line)) line-list)))
+      (let ((res-list (mapcar #'(lambda (line) (calibre-query-to-alist line)) line-list)))
         (if (= 1 (length res-list))
             (calibre-file-interaction-menu (car res-list))
           (calibre-format-selector-menu res-list))))))
