@@ -331,22 +331,33 @@
                 (assoc opr calibre-handler-alist)) 2) calibre-item))
     (message "didn't find that file")))
 
+(defun calibre--make-book-alist
+    (id book-title author-sort book-format)
+  `((:id ,id)
+    (:book-title ,book-title)
+    (:author-sort ,author-sort)
+    (:book-format ,book-format)))
+
+(defun calibre--make-item-selectable-string
+    (book-alist)
+  (string-join
+   (list (getattr book-alist :id)
+         (getattr book-alist :book-title)
+         (getattr book-alist :author-sort)
+         (getattr book-alist :book-format))
+   ", "))
+
 (defun calibre-format-selector-menu (calibre-item-list)
   (let ((chosen-item
          (completing-read "Pick book: "
-                          (mapcar (lambda (item)
-                                    (string-join
-                                     (list (getattr item :id)
-                                           (getattr item :book-title)
-                                           (getattr item :author-sort)
-                                           (getattr item :book-format))
-                                     ", "))
+                          (mapcar 'calibre--make-item-selectable-string
                                   calibre-item-list)
                           nil t)))
-    (calibre-file-interaction-menu (find-if (lambda (x)
-                                              (equal (getattr x :id)
-                                                     (car (split-string chosen-item "\\,"))))
-                                            calibre-item-list))))
+    (calibre-file-interaction-menu
+     (find-if (lambda (item)
+                (equal chosen-item
+                       (calibre--make-item-selectable-string item)))
+              calibre-item-list))))
 
 (defun calibre-find (&optional custom-query)
   (interactive)
