@@ -340,12 +340,12 @@
 
 (defun calibre--make-item-selectable-string
     (book-alist)
-  (string-join
-   (list (getattr book-alist :id)
-         (getattr book-alist :book-title)
-         (getattr book-alist :author-sort)
-         (getattr book-alist :book-format))
-   ", "))
+  (format
+   "(%s) [%s] %s -- %s"
+   (getattr book-alist :id)
+   (getattr book-alist :book-format)
+   (getattr book-alist :author-sort)
+   (getattr book-alist :book-title)))
 
 (defun calibre-format-selector-menu (calibre-item-list)
   (let ((chosen-item
