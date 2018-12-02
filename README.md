@@ -22,3 +22,7 @@ Prompts for a search string and displays all records which match on title or aut
 ## M-x calibre-find
 
 Prompts for a search string.  Matches the first record which would have been matched by calibre-list.  Offers several options for opening the work.
+
+## org-mode interaction
+
+Provides `org-calibre-open`, which registers a handler for org links like `[[calibre:Quick Start Guide]]`

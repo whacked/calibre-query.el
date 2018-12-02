@@ -1,3 +1,4 @@
+(require 'org)
 (require 'cl)
 (require 'sql)
 (when (featurep 'ivy)
@@ -395,4 +396,17 @@
 
 (global-set-key "\C-cK" 'calibre-open-citekey)
 
-(provide 'calibre-mode)
+;; ORG MODE INTERACTION
+(org-add-link-type "calibre" 'org-calibre-open 'org-calibre-link-export)
+
+(defun org-calibre-open (org-link-text)
+  ;; TODO: implement link parsers; assume default is title, e.g.
+  ;; [[calibre:Quick Start Guide]]
+  ;; will need to handle author shibori
+  (calibre-find
+   (calibre-build-default-query
+    (calibre-query-by-field "b.title" org-link-text))))
+
+(defun org-calibre-link-export (link description format)
+  "FIXME: stub function"
+  (concat "link in calibre: " link " (" description ")"))
