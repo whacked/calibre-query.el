@@ -1,5 +1,7 @@
 (require 'cl)
 (require 'sql)
+(when (featurep 'ivy)
+  (require 'ivy))
 
 ;; UTILITY
 (defun calibre-chomp (s)
@@ -347,17 +349,32 @@
    (getattr book-alist :author-sort)
    (getattr book-alist :book-title)))
 
-(defun calibre-format-selector-menu (calibre-item-list)
-  (let ((chosen-item
-         (completing-read "Pick book: "
-                          (mapcar 'calibre--make-item-selectable-string
-                                  calibre-item-list)
-                          nil t)))
-    (calibre-file-interaction-menu
-     (find-if (lambda (item)
-                (equal chosen-item
-                       (calibre--make-item-selectable-string item)))
-              calibre-item-list))))
+(if (featurep 'ivy)
+    
+    (defun calibre-format-selector-menu (calibre-item-list)
+      (ivy-read "Pick a book"
+                (let (display-alist)
+                  (dolist (item calibre-item-list display-alist)
+                    (setq
+                     display-alist
+                     (cons
+                      (list (calibre--make-item-selectable-string item)
+                            item)
+                      display-alist))))
+                :action (lambda (item)
+                          (calibre-file-interaction-menu (cadr item)))))
+
+  (defun calibre-format-selector-menu (calibre-item-list)
+    (let ((chosen-item
+           (completing-read "Pick book: "
+                            (mapcar 'calibre--make-item-selectable-string
+                                    calibre-item-list)
+                            nil t)))
+      (calibre-file-interaction-menu
+       (find-if (lambda (item)
+                  (equal chosen-item
+                         (calibre--make-item-selectable-string item)))
+                calibre-item-list)))))
 
 (defun calibre-find (&optional custom-query)
   (interactive)
