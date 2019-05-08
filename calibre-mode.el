@@ -1,6 +1,7 @@
 (require 'org)
 (require 'cl)
 (require 'sql)
+(require 'seq)
 (when (featurep 'ivy)
   (require 'ivy))
 
