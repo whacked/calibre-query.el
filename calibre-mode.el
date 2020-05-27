@@ -1,5 +1,7 @@
+(require 'esqlite)
 (require 'org)
 (require 'cl)
+(require 's)
 (require 'sql)
 (require 'seq)
 (require 'hydra)
@@ -7,13 +9,7 @@
   (require 'ivy))
 
 
-;; UTILITY
-(defun calibre-chomp (s)
-  (replace-regexp-in-string "[\s\n]+$" "" s))
-
-(defun quote-% (str)
-  (replace-regexp-in-string "%" "%%" str))
-
+;; NOTE: esqlite-sqlite-program must be findable in exec-path
 (setq calibre--calibre-library-name "Calibre Library")
 
 (defun calibre--find-library-filepath ()
@@ -31,7 +27,7 @@
          (goto-char (point-min))
          (while (search-forward "\\\\" nil t)
            (replace-match "\\" nil t))
-         (file-name-as-directory (calibre-chomp (buffer-string))))))
+         (file-name-as-directory (s-chomp (buffer-string))))))
    ;; look for default candidates
    (first
     (seq-remove
@@ -63,7 +59,7 @@
          ;; appears to be related to http://lists.gnu.org/archive/html/emacs-devel/2009-07/msg00279.html
          ;; you're better off replacing it with your exact program...
          ;; here we run xdg-mime to figure it out for *pdf* only. So this is not general!
-         (calibre-chomp
+         (s-chomp
           (shell-command-to-string
            (concat
             "grep Exec "
@@ -72,9 +68,10 @@
              ;; http://askubuntu.com/questions/159369/script-to-find-executable-based-on-extension-of-a-file
              ;; here we try to find the location of the mimetype opener that xdg-mime refers to.
              ;; it works for okular (Exec=okular %U %i -caption "%c"). NO IDEA if it works for others!
-             (delq nil (let ((mime-appname (calibre-chomp (replace-regexp-in-string
-                                                           "kde4-" "kde4/"
-                                                           (shell-command-to-string "xdg-mime query default application/pdf")))))
+             (delq nil (let ((mime-appname (s-chomp
+                                            (replace-regexp-in-string
+                                             "kde4-" "kde4/"
+                                             (shell-command-to-string "xdg-mime query default application/pdf")))))
 
                          (mapcar
                           #'(lambda (dir) (let ((outdir (concat dir "/" mime-appname))) (if (file-exists-p outdir) outdir)))
@@ -115,26 +112,23 @@
 
 (defun calibre-query (sql-query)
   (interactive)
-  (shell-command-to-string
-   (format "%s -separator \"\t\" \"%s\" \"%s\""
-           sql-sqlite-program
-           (replace-regexp-in-string "\"" "\\\\\"" calibre-db)
-           sql-query)))
+  (esqlite-read calibre-db sql-query))
 
-(defun calibre-query-to-alist (query-result)
-  "builds alist out of a full calibre-query query record result"
-  (if query-result
-      (let ((spl-query-result (split-string (calibre-chomp query-result) "\t")))
-        `((:id                     ,(nth 0 spl-query-result))
-          (:author-sort            ,(nth 1 spl-query-result))
-          (:book-dir               ,(nth 2 spl-query-result))
-          (:book-name              ,(nth 3 spl-query-result))
-          (:book-format  ,(downcase (nth 4 spl-query-result)))
-          (:book-pubdate           ,(nth 5 spl-query-result))
-          (:book-title             ,(nth 6 spl-query-result))
-          (:file-path    ,(concat (file-name-as-directory calibre-root-dir)
-                                  (file-name-as-directory (nth 2 spl-query-result))
-                                  (nth 3 spl-query-result) "." (downcase (nth 4 spl-query-result))))))))
+(defun calibre-record-to-alist (record)
+  "converts esqlite query output like
+  ((\"1\" \"a\" \"b\")
+   (\"2\" \"c\" \"d\"))
+  to alist based on column position"
+  `((:id                     ,(nth 0 record))
+    (:author-sort            ,(nth 1 record))
+    (:book-dir               ,(nth 2 record))
+    (:book-name              ,(nth 3 record))
+    (:book-format  ,(downcase (nth 4 record)))
+    (:book-pubdate           ,(nth 5 record))
+    (:book-title             ,(nth 6 record))
+    (:file-path    ,(concat (file-name-as-directory calibre-root-dir)
+                            (file-name-as-directory (nth 2 record))
+                            (nth 3 record) "." (downcase (nth 4 record))))))
 
 (defun calibre-build-default-query (whereclause &optional limit)
   (concat "SELECT "
@@ -152,7 +146,7 @@
 
 (defun calibre-read-query-filter-command ()
   (interactive)
-  (let* ((default-string (if mark-active (calibre-chomp (buffer-substring (mark) (point)))))
+  (let* ((default-string (if mark-active (s-trim (buffer-substring (mark) (point)))))
          ;; prompt &optional initial keymap read history default
          (search-string (read-string (format "Search Calibre for%s: "
                                              (if default-string
@@ -175,9 +169,14 @@
 
 (defun calibre-list ()
   (interactive)
-  (message (quote-% (calibre-query
-            (concat "SELECT b.path FROM books AS b "
-                    (calibre-read-query-filter-command))))))
+  (message "%s"
+           (mapconcat
+            (lambda (rec)
+              (format "%s" (car rec)))
+            (calibre-query
+             (concat "SELECT b.path FROM books AS b "
+                     (calibre-read-query-filter-command)))
+            "\n")))
 
 (defun calibre-get-cached-pdf-text (pdf-filepath)
   (let ((found-text (shell-command-to-string
@@ -209,7 +208,7 @@
 (defun calibre-make-citekey (calibre-res-alist)
   "return some kind of a unique citation key for BibTeX use"
   (let* ((stopword-list '("the" "on" "a"))
-         (spl (split-string (calibre-chomp (getattr calibre-res-alist :author-sort)) "&"))
+         (spl (split-string (s-trim (getattr calibre-res-alist :author-sort)) "&"))
          (first-author-lastname (first (split-string (first spl) ",")))
          (first-useful-word-in-title
           ;; ref fitlering in http://www.emacswiki.org/emacs/ElispCookbook#toc39
@@ -243,12 +242,15 @@ _q_ quit
   ("i" (lambda ()
          (interactive)
          (mark-aware-copy-insert
-          (calibre-chomp
+          (mapconcat
+           (lambda (rec)
+             (format "%s %s" (car rec) (cadr rec)))
            (calibre-query
             (concat "SELECT "
                     "idf.type, idf.val "
                     "FROM identifiers AS idf "
-                    (format "WHERE book = %s" (getattr calibre--latest-selected-item :id))))))))
+                    (format "WHERE book = %s" (getattr calibre--latest-selected-item :id))))
+           "\n"))))
   ("d" (lambda ()
          (interactive)
          (mark-aware-copy-insert
@@ -256,7 +258,7 @@ _q_ quit
   ("a" (lambda ()
          (interactive)
          (mark-aware-copy-insert
-          (calibre-chomp (getattr calibre--latest-selected-item :author-sort)))))
+          (getattr calibre--latest-selected-item :author-sort))))
   ("q" nil))
 
 (defhydra calibre-handle-entry (:hint nil :color blue)
@@ -310,7 +312,7 @@ _q_ quit
      (interactive)
      (insert (format "[[%s][%s]]"
                      (getattr calibre--latest-selected-item :file-path)
-                     (concat (calibre-chomp (getattr calibre--latest-selected-item :author-sort))
+                     (concat (getattr calibre--latest-selected-item :author-sort)
                              ", "
                              (getattr calibre--latest-selected-item :book-title))))))
   ("j"
@@ -413,19 +415,19 @@ _q_: quit"))
                          (calibre--make-item-selectable-string item)))
                 calibre-item-list)))))
 
+
+
 (defun calibre-find (&optional custom-query)
   (interactive)
   (let* ((sql-query (if custom-query
                         custom-query
                       (calibre-build-default-query (calibre-read-query-filter-command))))
-         (query-result (calibre-query sql-query))
-         (line-list (split-string (calibre-chomp query-result) "\n"))
-         (num-result (length line-list)))
-    (if (= 0 num-result)
+         (results (calibre-query sql-query)))
+    (if (= 0 (length results))
         (progn
           (message "nothing found.")
           (deactivate-mark))
-      (let ((res-list (mapcar #'(lambda (line) (calibre-query-to-alist line)) line-list)))
+      (let ((res-list (mapcar 'calibre-record-to-alist results)))
         (if (= 1 (length res-list))
             (calibre-file-interaction-menu (car res-list))
           (calibre-format-selector-menu res-list))))))
