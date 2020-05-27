@@ -2,8 +2,10 @@
 (require 'cl)
 (require 'sql)
 (require 'seq)
+(require 'hydra)
 (when (featurep 'ivy)
   (require 'ivy))
+
 
 ;; UTILITY
 (defun calibre-chomp (s)
@@ -44,6 +46,8 @@
       (expand-file-name (concat "~/"
                                 calibre--calibre-library-name)))))))
 
+
+(defvar calibre--latest-selected-item nil)
 
 (defvar calibre-root-dir (calibre--find-library-filepath))
 
@@ -226,7 +230,141 @@
              (deactivate-mark))
     (insert content)))
 
-;; Define the result handlers here in the form of (hotkey description
+(defhydra calibre-handle-book-information (:hint nil :exit t)
+  "
+Choose value:
+
+_i_ values in the book's `Ids` field (ISBN, DOI...)
+_d_ publication date
+_a_ author list
+
+_q_ quit
+"
+  ("i" (lambda ()
+         (interactive)
+         (mark-aware-copy-insert
+          (calibre-chomp
+           (calibre-query
+            (concat "SELECT "
+                    "idf.type, idf.val "
+                    "FROM identifiers AS idf "
+                    (format "WHERE book = %s" (getattr calibre--latest-selected-item :id))))))))
+  ("d" (lambda ()
+         (interactive)
+         (mark-aware-copy-insert
+          (substring (getattr calibre--latest-selected-item :book-pubdate) 0 10))))
+  ("a" (lambda ()
+         (interactive)
+         (mark-aware-copy-insert
+          (calibre-chomp (getattr calibre--latest-selected-item :author-sort)))))
+  ("q" nil))
+
+(defhydra calibre-handle-entry (:hint nil :color blue)
+  "conditional depending on mark"
+  ("o"
+   (lambda ()
+     (interactive)
+     (find-file-other-window (getattr calibre--latest-selected-item :file-path))))
+  ("O"
+   (lambda ()
+     (interactive)
+     (find-file-other-frame (getattr calibre--latest-selected-item :file-path))))
+  ("v"
+   (lambda ()
+     (interactive)
+     (calibre-open-with-default-opener (getattr calibre--latest-selected-item :file-path))))
+  ("x"
+   (lambda ()
+     (interactive)
+     (start-process "xournal-process" "*Messages*" "xournal"
+                    (let ((xoj-file-path (concat calibre-root-dir "/"
+                                                 (getattr calibre--latest-selected-item :book-dir)
+                                                 "/"
+                                                 (getattr res :book-name)
+                                                 ".xoj")))
+                      (if (file-exists-p xoj-file-path)
+                          xoj-file-path
+                        (getattr res :file-path))))))
+  
+  ("s"
+   (lambda ()
+     (interactive)
+     (mark-aware-copy-insert
+      (concat "title:\"" (getattr calibre--latest-selected-item :book-title) "\""))))
+  ("c"
+   (lambda ()
+     (interactive)
+     (mark-aware-copy-insert (calibre-make-citekey calibre--latest-selected-item))))
+  ("i" (calibre-handle-book-information/body))
+  
+  ("p"
+   (lambda ()
+     (interactive)
+     (mark-aware-copy-insert (getattr calibre--latest-selected-item :file-path))))
+  ("t"
+   (lambda ()
+     (interactive)
+     (mark-aware-copy-insert (getattr calibre--latest-selected-item :book-title))))
+  ("g"
+   (lambda ()
+     (interactive)
+     (insert (format "[[%s][%s]]"
+                     (getattr calibre--latest-selected-item :file-path)
+                     (concat (calibre-chomp (getattr calibre--latest-selected-item :author-sort))
+                             ", "
+                             (getattr calibre--latest-selected-item :book-title))))))
+  ("j"
+   (lambda ()
+     (interactive)
+     (mark-aware-copy-insert (json-encode calibre--latest-selected-item))))
+  ("X"
+   (lambda ()
+     (interactive)
+     
+     (let* ((citekey (calibre-make-citekey calibre--latest-selected-item)))
+       (let* ((pdftotext-out-buffer
+               (get-buffer-create
+                (format "pdftotext-extract-%s" (getattr calibre--latest-selected-item :id)))))
+         (set-buffer pdftotext-out-buffer)
+         (insert (shell-command-to-string (concat "pdftotext '"
+                                                  (getattr calibre--latest-selected-item :file-path)
+                                                  "' -")))
+         (switch-to-buffer-other-window pdftotext-out-buffer)
+         (beginning-of-buffer)))))
+  ("q" nil :color red))
+
+;; sets up dynamic hydra hinting based on whether the mark is active
+(setq calibre-handle-entry/hint
+      
+      ;; note the leading newline is CRUCIAL for hydra--format to work!
+      (let ((hint-template "\n(%s) [%s] found; choose action:
+
+^Insert^                           ^Open with^             
+
+_s_: calibre search string         _o_: current frame
+_c_: cite key                      _O_: other frame
+_p_: file path                     _v_: default viewer
+_g_: org link                      _x_: xournal
+_j_: entry json                    _X_: pdftotext output
+_t_: title
+_i_: book information (contd menu)
+
+_q_: quit"))
+        `(eval
+          (hydra--format nil nil
+                         (format
+                          (if mark-active
+                              (prog1 (replace-regexp-in-string
+                                      "\\^Insert\\^           "
+                                      "^Copy to clipboard^"
+                                      ,hint-template))
+                            ,hint-template)
+                          (getattr calibre--latest-selected-item :book-format)
+                          (getattr calibre--latest-selected-item :book-name))
+                         calibre-handle-entry/heads))))
+
+
+;; Define the calibre--latest-selected-itemult handlers here in the form of (hotkey description
 ;; handler-function) where handler-function takes 1 alist argument
 ;; containing the result record.
 (setq calibre-handler-alist
@@ -287,11 +425,12 @@
          (lambda (res) (mark-aware-copy-insert (getattr res :book-title))))
         ("g" "insert org link"
          (lambda (res)
-           (insert (format "[[%s][%s]]"
-                           (getattr res :file-path)
-                           (concat (calibre-chomp (getattr res :author-sort))
-                                   ", "
-                                   (getattr res :book-title))))))
+           (mark-aware-copy-insert
+            (format "[[%s][%s]]"
+                    (getattr res :file-path)
+                    (concat (calibre-chomp (getattr res :author-sort))
+                            ", "
+                            (getattr res :book-title))))))
         ("j" "insert entry json"
          (lambda (res) (mark-aware-copy-insert (json-encode res))))
         ("X" "open as plaintext in new buffer (via pdftotext)"
@@ -313,26 +452,9 @@
 
 (defun calibre-file-interaction-menu (calibre-item)
   (if (file-exists-p (getattr calibre-item :file-path))
-      (let ((opr (char-to-string (read-char
-                                  ;; render menu text here
-                                  (concat (format "(%s) [%s] found, what do?\n"
-                                                  (getattr calibre-item :book-format)
-                                                  (getattr calibre-item :book-name))
-                                          (mapconcat #'(lambda (handler-list)
-                                                         (let ((hotkey      (elt handler-list 0))
-                                                               (description (elt handler-list 1))
-                                                               (handler-fn  (elt handler-list 2)))
-                                                           ;; ULGY BANDAID HACK
-                                                           ;; replace "insert" with "copy to clipboard" if mark-active
-                                                           (format " %s :   %s"
-                                                                   hotkey
-                                                                   (if mark-active
-                                                                       (replace-regexp-in-string "insert \\(.*\\)" "copy \\1 to clipboard" description)
-                                                                     description)))
-                                                         ) calibre-handler-alist "\n"))))))
-        (funcall
-         (elt (if (null (assoc opr calibre-handler-alist)) (assoc "q" calibre-handler-alist)
-                (assoc opr calibre-handler-alist)) 2) calibre-item))
+      (progn
+        (setq calibre--latest-selected-item calibre-item)
+        (calibre-handle-entry/body))
     (message "didn't find that file")))
 
 (defun calibre--make-book-alist
