@@ -466,3 +466,5 @@ _q_: quit"))
 (defun org-calibre-link-export (link description format)
   "FIXME: stub function"
   (concat "link in calibre: " link " (" description ")"))
+
+(provide 'calibre-query)
