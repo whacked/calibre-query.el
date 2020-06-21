@@ -17,48 +17,73 @@
 
 ;;; Code:
 
-(require 'esqlite)
-(require 'org)
 (require 'cl)
-(require 's)
-(require 'sql)
-(require 'seq)
+(require 'esqlite)
 (require 'hydra)
+(require 'json)
+(require 'org)
+(require 's)
+(require 'seq)
+(require 'sql)
 (when (featurep 'ivy)
   (require 'ivy))
 
 ;; NOTE: esqlite-sqlite-program must be findable in exec-path
 (setq calibre--calibre-library-name "Calibre Library")
 
+(defun calibre--get-first-existing-path (candidate-path-list)
+  (first
+   (seq-remove
+    (lambda (maybe-path)
+      (or (null maybe-path)
+          (not (file-exists-p
+                maybe-path))))
+    candidate-path-list)))
+
+(defun calibre--get-library-path-from-global-py (calibre-global-py-path)
+  (with-temp-buffer
+    (insert-file-contents calibre-global-py-filepath)
+    (delete-non-matching-lines "library_path")
+    (goto-char (point-min))
+    (while (search-forward-regexp
+            "library_path *= *\\u?['\"]\\(.+\\)['\"]" nil t)
+      (replace-match "\\1"))
+    (goto-char (point-min))
+    (while (search-forward "\\\\" nil t)
+      (replace-match "\\" nil t))
+    (file-name-as-directory (s-chomp (buffer-string)))))
+
+(defun calibre--get-library-path-from-global-py-json (calibre-global-py-json-path)
+  (cdr
+   (assoc
+    'library_path
+    (json-read-file calibre-global-py-json-path))))
+
 (defun calibre--find-library-filepath ()
   (or
+   ;; if global.py.json exists, parse it for "library_path"
+   (let ((global-py-json (calibre--get-first-existing-path
+                          (list
+                           (expand-file-name "~/.config/calibre/global.py.json")
+                           (expand-file-name "~/calibre/global.py.json")))))
+     (when (file-exists-p global-py-json)
+       (calibre--get-library-path-from-global-py-json global-py-json)))
+   
    ;; if global.py exists, parse it for "library_path"
-   (let ((calibre-global-py-filepath (expand-file-name "~/calibre/global.py")))
-     (when (file-exists-p calibre-global-py-filepath)
-       (with-temp-buffer
-         (insert-file-contents calibre-global-py-filepath)
-         (delete-non-matching-lines "library_path")
-         (goto-char (point-min))
-         (while (search-forward-regexp
-                 "library_path *= *\\u?['\"]\\(.+\\)['\"]" nil t)
-           (replace-match "\\1"))
-         (goto-char (point-min))
-         (while (search-forward "\\\\" nil t)
-           (replace-match "\\" nil t))
-         (file-name-as-directory (s-chomp (buffer-string))))))
+   (let ((global-py (calibre--get-first-existing-path
+                     (list (expand-file-name "~/.config/calibre/global.py")
+                           (expand-file-name "~/calibre/global.py")))))
+     (when (file-exists-p global-py)
+       (calibre--get-library-path-from-global-py global-py)))
+   
    ;; look for default candidates
-   (first
-    (seq-remove
-     (lambda (maybe-path)
-       (or (null maybe-path)
-           (not (file-exists-p
-                 maybe-path))))
-     (list
-      (when (getenv "UserProfile")
-        (concat (file-name-as-directory (getenv "UserProfile"))
-                calibre--calibre-library-name))
-      (expand-file-name (concat "~/"
-                                calibre--calibre-library-name)))))))
+   (calibre--get-first-existing-path
+    (list
+     (when (getenv "UserProfile")
+       (concat (file-name-as-directory (getenv "UserProfile"))
+               calibre--calibre-library-name))
+     (expand-file-name (concat "~/"
+                               calibre--calibre-library-name))))))
 
 
 (defvar calibre--latest-selected-item nil)
@@ -66,8 +91,10 @@
 (defvar calibre-root-dir (calibre--find-library-filepath))
 
 (defvar calibre-db
-  (concat (file-name-as-directory
-           calibre-root-dir) "metadata.db"))
+  (or
+   (getenv "CALIBRE_OVERRIDE_DATABASE_PATH")
+   (concat (file-name-as-directory
+            calibre-root-dir) "metadata.db")))
 
 (defvar calibre-default-opener
   (cond ((eq system-type 'gnu/linux)
